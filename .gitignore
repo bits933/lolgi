@@ -22,3 +22,9 @@ __pycache__/
 # Markdown notes & docs — keep on your computer, don't upload
 # (planning docs, debug reports, AI-tool config, etc.)
 *.md
+
+# AI-assistant tooling & planning docs — not app code, kept local only
+.claude/
+.codex/
+.planning/
+prd/
