@@ -1,0 +1,293 @@
+{
+  "generated_at": "2026-07-16T21:53:08.879744+00:00",
+  "nodes": {
+    "Bubble.tsx": {
+      "code_fingerprint": "",
+      "label": "Bubble.tsx",
+      "last": "2026-07-16T21:41:23.214087+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:41:23.214087+00:00",
+          "outcome": "useful",
+          "q": "Debug the whole codebase for faster interactions and actions, preserve bubble animations, and create a detailed V2 report without implementing fixes."
+        },
+        {
+          "date": "2026-07-15T19:51:52.155679+00:00",
+          "outcome": "useful",
+          "q": "Make the background of the overlay bubbles dark instead of white and reverse the icons accordingly."
+        },
+        {
+          "date": "2026-07-15T19:45:25.469129+00:00",
+          "outcome": "useful",
+          "q": "Match the color of the overlay bubble to the color being used in the dashboard."
+        },
+        {
+          "date": "2026-07-15T19:20:41.614883+00:00",
+          "outcome": "useful",
+          "q": "Remove the overlay bubble sliders and match the overlay bubbles to the dashboard bubble style after recent code changes."
+        }
+      ],
+      "score": 3.925003756,
+      "source_file": "",
+      "status": "preferred",
+      "uses": 4
+    },
+    "Dashboard": {
+      "code_fingerprint": "",
+      "label": "Dashboard",
+      "last": "2026-07-15T12:18:48.361653+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T12:18:48.361653+00:00",
+          "outcome": "useful",
+          "q": "Create a detailed Dashboard V2 task list and plan from the supplied wireframes, PRD, codebase, action list, and subagent research."
+        }
+      ],
+      "score": 0.968196453,
+      "source_file": "",
+      "status": "tentative",
+      "uses": 1
+    },
+    "Overlay": {
+      "code_fingerprint": "",
+      "label": "Overlay",
+      "last": "2026-07-15T19:51:52.155679+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T19:51:52.155679+00:00",
+          "outcome": "useful",
+          "q": "Make the background of the overlay bubbles dark instead of white and reverse the icons accordingly."
+        }
+      ],
+      "score": 0.975260336,
+      "source_file": "",
+      "status": "tentative",
+      "uses": 1
+    },
+    "prd_prd_action_ring_f4_folders": {
+      "code_fingerprint": "35ff82a85fc118181a9c3805216437c5582760e3edd6f41c2d1f270f2fb66625",
+      "label": "F4 - Folders (nesting)",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "prd/PRD-Action-Ring.pdf",
+      "status": "tentative",
+      "uses": 1
+    },
+    "prd_prd_action_ring_t1_9": {
+      "code_fingerprint": "35ff82a85fc118181a9c3805216437c5582760e3edd6f41c2d1f270f2fb66625",
+      "label": "T1.9 [M1, Effort M]: Folders - data model, in-ring expansion, back navigation",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "prd/PRD-Action-Ring.pdf",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_main_actions_index_dispatchaction": {
+      "code_fingerprint": "b94f58e5e261535c192bdd5934df19816334dea1396ab79acf8bbb7f162b7072",
+      "label": "dispatchAction()",
+      "last": "2026-07-16T21:41:23.214087+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:41:23.214087+00:00",
+          "outcome": "useful",
+          "q": "Debug the whole codebase for faster interactions and actions, preserve bubble animations, and create a detailed V2 report without implementing fixes."
+        }
+      ],
+      "score": 0.99981131,
+      "source_file": "windows app/src/main/actions/index.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_main_actions_volume": {
+      "code_fingerprint": "e8b75319cc185f85ff1d315124888fc1689e1e5e5655b6d5b10bdd921ec3f2c0",
+      "label": "volume.ts",
+      "last": "2026-07-15T19:20:41.614883+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T19:20:41.614883+00:00",
+          "outcome": "useful",
+          "q": "Remove the overlay bubble sliders and match the overlay bubbles to the dashboard bubble style after recent code changes."
+        }
+      ],
+      "score": 0.974772617,
+      "source_file": "windows app/src/main/actions/volume.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_main_ipc": {
+      "code_fingerprint": "bb59898950fe088c56c51391e04ab55c65cdad6c06541ecc98c2476ec605c214",
+      "label": "ipc.ts",
+      "last": "2026-07-16T21:41:23.214087+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:41:23.214087+00:00",
+          "outcome": "useful",
+          "q": "Debug the whole codebase for faster interactions and actions, preserve bubble animations, and create a detailed V2 report without implementing fixes."
+        }
+      ],
+      "score": 0.99981131,
+      "source_file": "windows app/src/main/ipc.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_main_store_getconfig": {
+      "code_fingerprint": "10fcb2d022cead6fbeaab2048d21a3efa0934175ab32feaf3592fd94d54ffac8",
+      "label": "getConfig()",
+      "last": "2026-07-16T21:41:23.214087+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:41:23.214087+00:00",
+          "outcome": "useful",
+          "q": "Debug the whole codebase for faster interactions and actions, preserve bubble animations, and create a detailed V2 report without implementing fixes."
+        }
+      ],
+      "score": 0.99981131,
+      "source_file": "windows app/src/main/store.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_main_utils_foregroundapp_startforegroundapppolling": {
+      "code_fingerprint": "7d93213ca142f82eed1e24163414e4760e1935d77fb08f89dff5e71216e9dfdb",
+      "label": "startForegroundAppPolling()",
+      "last": "2026-07-16T21:41:23.214087+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T21:41:23.214087+00:00",
+          "outcome": "useful",
+          "q": "Debug the whole codebase for faster interactions and actions, preserve bubble animations, and create a detailed V2 report without implementing fixes."
+        }
+      ],
+      "score": 0.99981131,
+      "source_file": "windows app/src/main/utils/foregroundApp.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_renderer_dashboard_components_actiontoolbar_actiontoolbar_groupchildren": {
+      "code_fingerprint": "9da4ee9b4a455eeed595b37552c3345c9f5ad4158f7176d4d62fdc5da10c573c",
+      "label": "GroupChildren()",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "windows app/src/renderer/dashboard/components/ActionToolbar/ActionToolbar.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_renderer_dashboard_components_ringpreview_editablering": {
+      "code_fingerprint": "d4d8b05837f90b671054e88f3d2659e8b45b9a4636e74a3431b46bdb214a64e4",
+      "label": "EditableRing.tsx",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "windows app/src/renderer/dashboard/components/RingPreview/EditableRing.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_renderer_dashboard_hooks_usetheme": {
+      "code_fingerprint": "2a11d020ec478a613f50b042e0d90a517b871e5ba4b3bc51595fe2f8b2d375ab",
+      "label": "useTheme.ts",
+      "last": "2026-07-15T19:45:25.469129+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T19:45:25.469129+00:00",
+          "outcome": "useful",
+          "q": "Match the color of the overlay bubble to the color being used in the dashboard."
+        }
+      ],
+      "score": 0.975159493,
+      "source_file": "windows app/src/renderer/dashboard/hooks/useTheme.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_renderer_overlay_components_actionsring_subring_subring": {
+      "code_fingerprint": "409b22f2c97d2b8a9428eb66be57d3c7266da14996f1a9964d77cb21b5dc8315",
+      "label": "SubRing()",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "windows app/src/renderer/overlay/components/ActionsRing/SubRing.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_shared_ringgeometry_computesubringarcpositions": {
+      "code_fingerprint": "957d0f44392379f0840cdd54edc76652a70a767170bc68ee6cdea921b407f753",
+      "label": "computeSubRingArcPositions()",
+      "last": "2026-07-16T07:31:00.196421+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-16T07:31:00.196421+00:00",
+          "outcome": "useful",
+          "q": "Plan and audit F4.1 morphing groups/folders from the PRD, existing code, and Logitech behavior"
+        }
+      ],
+      "score": 0.986262063,
+      "source_file": "windows app/src/shared/ringGeometry.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_shared_types_ringopenpayload": {
+      "code_fingerprint": "0509ce77198810a604d30ab3d1dd5e2db3e27f8052ee74c3fb917de2e3d041cd",
+      "label": "RingOpenPayload",
+      "last": "2026-07-15T19:45:25.469129+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T19:45:25.469129+00:00",
+          "outcome": "useful",
+          "q": "Match the color of the overlay bubble to the color being used in the dashboard."
+        }
+      ],
+      "score": 0.975159493,
+      "source_file": "windows app/src/shared/types.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "windows_app_src_shared_types_themeconfig": {
+      "code_fingerprint": "0509ce77198810a604d30ab3d1dd5e2db3e27f8052ee74c3fb917de2e3d041cd",
+      "label": "ThemeConfig",
+      "last": "2026-07-15T19:45:25.469129+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-15T19:45:25.469129+00:00",
+          "outcome": "useful",
+          "q": "Match the color of the overlay bubble to the color being used in the dashboard."
+        }
+      ],
+      "score": 0.975159493,
+      "source_file": "windows app/src/shared/types.ts",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}

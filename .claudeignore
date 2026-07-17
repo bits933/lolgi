@@ -1,0 +1,7 @@
+.planning/
+.git/
+node_modules/
+dist/
+.vite/
+windows app/node_modules/
+windows app/dist/

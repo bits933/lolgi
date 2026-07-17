@@ -1,0 +1,70 @@
+.settingsPage { width: 100%; height: 100%; padding: var(--space-6) var(--space-7) var(--space-8); overflow-y: auto; }
+.loading { padding: var(--space-7); color: var(--text-tertiary); }
+.pageHeader { max-width: 1040px; margin: 0 auto var(--space-6); display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
+.pageHeader > div > span { color: var(--accent); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+.pageHeader h1 { margin-top: 2px; color: var(--text-primary); font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.5px; }
+.pageHeader p { margin-top: var(--space-1); color: var(--text-tertiary); font-size: var(--fs-sm); }
+.statusPill { padding: 6px var(--space-3); display: flex; align-items: center; gap: var(--space-1); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-tertiary); background: var(--bg-surface); font-size: var(--fs-xs); font-weight: 600; }
+.statusPillOn { border-color: var(--border-accent); color: var(--accent); background: var(--accent-muted); }
+.settingsGrid { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: var(--space-4); align-items: start; }
+.settingsColumn { min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.card,
+.aboutCard,
+.previewColumn { border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--shadow-card); }
+.card { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
+.cardHeading { padding-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-3); color: var(--accent); border-bottom: 1px solid var(--border-subtle); }
+.cardHeading > div { min-width: 0; display: flex; flex-direction: column; }
+.cardHeading strong,
+.previewHeading strong,
+.aboutCard strong { color: var(--text-primary); font-size: var(--fs-md); font-weight: 600; }
+.cardHeading small,
+.previewHeading small,
+.aboutCard small { color: var(--text-tertiary); font-size: var(--fs-xs); }
+.row { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.row > div,
+.rowStack > div:first-child { min-width: 0; display: flex; flex-direction: column; }
+.row strong,
+.rowStack strong { color: var(--text-primary); font-size: var(--fs-base); font-weight: 600; }
+.row small,
+.rowStack small { margin-top: 2px; color: var(--text-tertiary); font-size: var(--fs-xs); }
+/* Stacked layout — reserved for controls too wide for an inline .row
+   (the segmented pickers). Inline .row is the default for every other setting. */
+.rowStack { display: flex; flex-direction: column; gap: var(--space-3); }
+.optionLabel { color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.2px; }
+.twoSegments,
+.threeSegments { display: grid; gap: var(--space-2); }
+.twoSegments { grid-template-columns: 1fr 1fr; }
+.threeSegments { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
+.twoSegments button,
+.threeSegments button { min-height: 54px; padding: var(--space-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-secondary); cursor: pointer; transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast); }
+.twoSegments button:hover,
+.threeSegments button:hover,
+.twoSegments .segmentActive,
+.threeSegments .segmentActive { border-color: var(--accent); color: var(--accent); background: var(--accent-muted); }
+.twoSegments strong,
+.threeSegments strong { color: inherit; font-size: var(--fs-sm); font-weight: 600; }
+.twoSegments small,
+.threeSegments small { color: var(--text-tertiary); font-size: var(--fs-xs); }
+.toggle { position: relative; width: 42px; height: 24px; flex: 0 0 42px; }
+.toggle input { position: absolute; opacity: 0; }
+.toggle span { position: absolute; inset: 0; border-radius: var(--radius-pill); background: var(--border-hover); cursor: pointer; transition: 160ms ease; }
+/* White knob is a physical-switch convention — intentionally light in both themes. */
+.toggle span::before { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: 160ms ease; }
+.toggle input:checked + span { background: var(--accent); }
+.toggle input:checked + span::before { transform: translateX(18px); }
+.colorPicker { display: flex; align-items: center; gap: var(--space-2); color: var(--text-tertiary); font-family: 'Consolas', monospace; font-size: var(--fs-sm); }
+.colorPicker input { width: 34px; height: 34px; padding: 2px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; }
+.resetButton { height: var(--control-sm); padding: 0 var(--space-3); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); color: var(--danger); background: var(--danger-muted); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+.aboutCard { padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); color: var(--accent); }
+.aboutCard > div { display: flex; flex-direction: column; }
+.previewColumn { position: sticky; top: 0; padding: var(--space-4); }
+.previewHeading { display: flex; align-items: center; gap: var(--space-2); color: var(--accent); }
+.previewHeading span { display: flex; flex-direction: column; }
+.previewFrame { height: 360px; margin-top: var(--space-3); display: grid; place-items: center; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-base); }
+.previewFrame > div { transform: scale(0.78); }
+.previewColumn > p { margin-top: var(--space-2); color: var(--text-tertiary); font-size: var(--fs-xs); line-height: var(--lh-normal); }
+
+@media (max-width: 1080px) {
+  .settingsGrid { grid-template-columns: 1fr; }
+  .previewColumn { position: static; }
+}

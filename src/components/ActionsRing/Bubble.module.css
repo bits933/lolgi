@@ -1,0 +1,64 @@
+/* VIS-03: 56px bubble -- semi-transparent glass button */
+.bubble {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto; /* OVL-03: bubbles intercept mouse events */
+
+  /* ANI-07/08: GPU composited transitions only */
+  will-change: transform;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+
+  /* Ensure label doesn't overflow the bubble visually */
+  overflow: visible;
+}
+
+/* ANI-03: Hover -- scale + purple glow */
+.hovered {
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(123, 104, 238, 0.6);
+}
+
+/* VIS-05: 24px icon, centered */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 150ms ease-out; /* ANI-04: icon lift */
+}
+
+/* ANI-04: Icon lifts -2px when bubble is hovered */
+.iconLifted {
+  transform: translateY(-2px);
+}
+
+/* VIS-06: 12px label below bubble */
+.label {
+  position: absolute;
+  top: calc(100% + 6px); /* 6px gap below bubble edge */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  /* ANI-04: label opacity follows hover */
+  opacity: 0.7;
+  transition: opacity 150ms ease-out;
+}
+
+/* ANI-04: Label fully opaque on hover */
+.hovered .label {
+  opacity: 1;
+}

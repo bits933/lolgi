@@ -1,0 +1,11 @@
+:root {
+  /* Canonical Actions Ring bubble surface. Both renderers consume these tokens. */
+  --bubble-fill: #1e2128;
+  --bubble-stroke: #383d48;
+  --bubble-stroke-width: 1px;
+  --bubble-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --bubble-icon: #f0f1f3;
+  --bubble-adjustment-fill: #323742;
+  --bubble-nub-width: 7px;
+  --bubble-nub-height: 14px;
+}

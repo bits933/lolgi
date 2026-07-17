@@ -1,0 +1,308 @@
+.sidebar {
+  width: 220px;
+  height: 100%;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width var(--transition-normal);
+}
+
+.sidebarCollapsed { width: 72px; }
+
+.logoArea {
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brandLockup {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.logoIcon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--accent-muted);
+  border: 1px solid var(--border-accent);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+
+.logoText,
+.profileCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.logoBrand {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+}
+
+.logoProduct {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.collapseBtn {
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  background: transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.collapseBtn:hover {
+  color: var(--text-primary);
+  border: 0;
+  background: transparent;
+}
+
+.sectionHeader {
+  margin: 0 var(--space-5) var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.nav {
+  min-height: 0;
+  flex: 1;
+  padding: 0 var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.profileList {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.profileItem {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profileItem:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.profileItemActive {
+  color: var(--text-primary);
+  background: var(--accent-muted);
+  border-color: var(--border-accent);
+}
+
+/* Leading accent bar — the restrained Options+ active affordance */
+.profileItemActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent);
+}
+
+.profileIcon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  background: var(--bg-surface-hover);
+}
+
+.profileItemActive .profileIcon {
+  background: var(--bg-surface);
+}
+
+.profileIconImage {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
+.profileName {
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileNameEditing {
+  cursor: text;
+  outline: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  caret-color: var(--accent);
+  user-select: text;
+}
+
+.profileItemActive .profileName {
+  font-weight: 700;
+}
+
+.profileMeta {
+  overflow: hidden;
+  margin-top: 1px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileDisabled {
+  margin-left: auto;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  background: var(--bg-surface-hover);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.addProfileBtn,
+.settingsBtn {
+  width: 100%;
+  height: var(--control-md);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.addProfileBtn {
+  border: 1px dashed var(--border-default);
+  color: var(--text-tertiary);
+}
+
+.addProfileBtn:hover,
+.settingsBtn:hover,
+.settingsBtnActive {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-muted);
+}
+
+.footer {
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.version {
+  padding-left: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  text-align: left;
+}
+
+.sidebarCollapsed .logoArea {
+  padding: var(--space-5) var(--space-3) var(--space-4);
+  justify-content: center;
+}
+
+.sidebarCollapsed .brandLockup,
+.sidebarCollapsed .sectionHeader,
+.sidebarCollapsed .profileCopy,
+.sidebarCollapsed .profileDisabled,
+.sidebarCollapsed .navLabel,
+.sidebarCollapsed .version {
+  display: none;
+}
+
+.sidebarCollapsed .collapseBtn { margin-left: 0; }
+
+.sidebarCollapsed .nav {
+  padding: var(--space-2) var(--space-3) 0;
+  align-items: center;
+}
+
+.sidebarCollapsed .profileList {
+  width: 100%;
+  align-items: center;
+}
+
+.sidebarCollapsed .profileItem,
+.sidebarCollapsed .addProfileBtn,
+.sidebarCollapsed .settingsBtn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+.sidebarCollapsed .profileItemActive::before {
+  left: -6px;
+  height: 18px;
+}
+
+.sidebarCollapsed .footer {
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  align-items: center;
+}

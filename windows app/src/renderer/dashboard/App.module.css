@@ -1,0 +1,110 @@
+.app { width: 100%; height: 100%; display: flex; background: var(--bg-base); }
+.main { min-width: 0; flex: 1; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+.profileHeader {
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+}
+.profileTitle { min-width: 150px; display: flex; flex-direction: column; }
+.profileTitle span { color: var(--accent); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.2px; }
+.profileNameRow { min-width: 0; display: flex; align-items: center; gap: var(--space-1); }
+.profileTitle h1 { min-width: 0; overflow: hidden; color: var(--text-primary); font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.3px; text-overflow: ellipsis; white-space: nowrap; }
+.profileNameEditing { outline: none; border: 0; background: transparent; box-shadow: none; caret-color: var(--accent); cursor: text; user-select: text; }
+.renameProfileButton {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  background: transparent;
+  opacity: 0.68;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast);
+}
+.renameProfileButton:hover { color: var(--accent); background: var(--accent-muted); opacity: 1; }
+
+.headerStatus { min-width: 0; flex: 1; display: flex; align-items: center; gap: var(--space-2); }
+.headerStatus > button {
+  height: var(--control-sm);
+  padding: 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+.headerStatus > button:hover { border-color: var(--border-hover); color: var(--text-primary); }
+.headerStatus > .globalActive,
+.headerStatus > .globalActive:hover { border-color: var(--border-accent); color: var(--accent); background: var(--accent-muted); }
+
+.unsaved {
+  padding: 5px var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.unsaved { color: var(--warning); background: var(--warning-muted); border: 1px solid var(--warning-border); }
+
+.headerActions { display: flex; align-items: center; gap: var(--space-1); }
+.headerActions > button {
+  height: var(--control-sm);
+  min-width: var(--control-sm);
+  padding: 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+.headerActions > button:hover:not(:disabled) { border-color: var(--border-accent); color: var(--accent); background: var(--accent-muted); }
+.headerActions > button:disabled { opacity: 0.4; cursor: default; }
+.headerActions > .deleteAction:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); background: var(--danger-muted); }
+.headerActions > .headerSave {
+  min-width: 76px;
+  padding: 0 var(--space-3);
+  border-color: transparent;
+  color: var(--text-on-accent);
+  background: var(--accent-fill);
+  box-shadow: var(--shadow-glow);
+}
+.headerActions > .headerSave:hover:not(:disabled) { color: var(--text-on-accent); background: var(--accent-hover); border-color: transparent; }
+
+.workspace { min-height: 0; flex: 1; display: flex; overflow: hidden; }
+.ringPane { min-width: 250px; flex: 1; transition: flex-basis var(--transition-normal); overflow: hidden; }
+.ringPaneCompact { flex-basis: 46%; }
+
+.loading { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-tertiary); background: var(--bg-base); }
+.loading span { width: 38px; height: 38px; margin-bottom: var(--space-4); border: 2px solid var(--border-default); border-top-color: var(--accent); border-radius: 50%; animation: spin 700ms linear infinite; }
+.loading strong { color: var(--text-secondary); font-size: var(--fs-base); }
+.loading small { margin-top: 3px; color: var(--text-tertiary); font-size: var(--fs-xs); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1120px) {
+  .profileHeader { gap: var(--space-2); }
+  .profileTitle { min-width: 115px; }
+  .headerStatus { display: none; }
+  .headerActions { margin-left: auto; }
+}

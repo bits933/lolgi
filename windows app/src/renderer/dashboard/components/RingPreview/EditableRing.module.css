@@ -1,0 +1,267 @@
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--bg-base);
+  /* Subtle dot grid signals a drop surface without competing with the ring */
+  background-image: radial-gradient(var(--border-subtle) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  background-position: center;
+  transition: background var(--transition-normal);
+}
+
+.ringCanvas {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  flex: 0 0 420px;
+  transform: scale(0.93);
+  transition: transform var(--transition-normal);
+}
+
+.stageCompact .ringCanvas { transform: scale(0.77); }
+
+.folderCanvas { transform-origin: center; }
+
+.folderParent,
+.folderChild {
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  color: var(--bubble-icon);
+  background: var(--bubble-fill);
+  box-shadow: var(--bubble-shadow);
+}
+
+.folderParent {
+  z-index: 5;
+  isolation: isolate;
+  border: 2px solid var(--accent);
+  color: var(--bubble-icon);
+  background: var(--bubble-fill);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.folderChild { z-index: 4; }
+.folderChild:hover { color: var(--accent); border-color: var(--border-hover); background: var(--bg-surface-hover); }
+.folderParent img,
+.folderChild img { width: 29px; height: 29px; object-fit: contain; border-radius: 6px; }
+
+.connectorDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--bubble-nub-width);
+  height: var(--bubble-nub-height);
+  transform: translate(-50%, -50%) translateX(37px);
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent);
+  box-shadow: none;
+  z-index: -1;
+}
+
+.groupDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--bubble-nub-width);
+  height: var(--bubble-nub-height);
+  box-sizing: border-box;
+  transform: translate(-50%, -50%) rotate(var(--group-dot-angle, 0rad)) translateX(37px);
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent);
+  box-shadow: none;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.parentBackLabel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.folderChildLabel {
+  position: absolute;
+  left: calc(100% + 11px);
+  top: 50%;
+  width: 124px;
+  transform: translateY(-50%);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.folderInsertion {
+  z-index: 3;
+  border: 2px dashed color-mix(in srgb, var(--accent) 44%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-muted) 48%, transparent);
+}
+
+.folderInsertion .folderChildLabel { color: var(--text-tertiary); font-weight: 600; }
+.folderInsertion:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.orbit {
+  position: absolute;
+  inset: 77px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-default);
+}
+
+.centerMark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.centerMark span { color: var(--text-primary); font-size: var(--fs-lg); font-weight: 700; line-height: 1; }
+.centerMark small { margin-top: 3px; color: var(--text-tertiary); font-size: var(--fs-xs); }
+
+.slot {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.slot:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+  color: var(--accent);
+}
+
+.slotAssigned {
+  /* Subtle neutral rim (reference: near-invisible stroke, dark fill) —
+     selection, not every assigned bubble, carries the accent. */
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  background: var(--bubble-fill);
+  box-shadow: var(--bubble-shadow);
+  color: var(--bubble-icon);
+}
+
+.slotAssigned:hover { border-color: var(--border-hover); }
+
+.slotGroup {
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  background: var(--bubble-fill);
+  color: var(--bubble-icon);
+  box-shadow: var(--bubble-shadow);
+  isolation: isolate;
+}
+.slotGroup:hover { border-color: var(--border-hover); color: var(--bubble-icon); }
+
+.slotEmpty {
+  border: 1.5px dashed var(--border-hover);
+  background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+  color: var(--text-tertiary);
+}
+
+.slotSelected {
+  /* Reference look: thin accent line on a dark fill, no thick halo. */
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+}
+
+.slotSelected:hover { border-color: var(--accent); }
+
+.slotGroup.slotSelected,
+.slotGroup.slotSelected:hover {
+  border-color: var(--accent);
+  color: var(--bubble-icon);
+  background: var(--bubble-fill);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+}
+
+.slotDragOver {
+  transform: translate(-50%, -50%) scale(1.14);
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.slot img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; }
+
+.slotNumber {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.slotLabel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 112px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileCaption {
+  position: relative;
+  z-index: 2;
+  margin-top: -12px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.profileCaption small { color: var(--text-tertiary); font-size: var(--fs-sm); }
+
+@media (max-width: 1140px) {
+  .ringCanvas { transform: scale(0.78); }
+  .stageCompact .ringCanvas { transform: scale(0.68); }
+}

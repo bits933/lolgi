@@ -1,0 +1,72 @@
+.hotkeyConfig {
+  padding: var(--space-7);
+  max-width: 480px;
+}
+
+.hotkeyConfigEmbedded {
+  max-width: none;
+  padding: 0;
+}
+
+.hotkeyConfigEmbedded .section {
+  margin: 0;
+}
+
+.section {
+  margin-bottom: var(--space-7);
+}
+
+.label {
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.recorder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.input {
+  flex: 1;
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  cursor: default;
+  transition: border-color 150ms ease-out, background 150ms ease-out;
+}
+
+.inputRecording {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.button {
+  height: var(--control-md);
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease-out;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+}
+
+.hint {
+  margin-top: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}

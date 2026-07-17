@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "project": "logi-actions-ring",
+  "workflow": {
+    "yolo_mode": false,
+    "granularity": "phase",
+    "auto_commit": true,
+    "parallel_agents": true,
+    "_auto_chain_active": false
+  },
+  "models": {
+    "planner": "sonnet",
+    "executor": "sonnet",
+    "researcher": "sonnet",
+    "reviewer": "opus"
+  },
+  "agents": {
+    "custom": [
+      "senior-tech-developer",
+      "motion-master",
+      "ux-motion-designer"
+    ]
+  }
+}

@@ -1,0 +1,233 @@
+.bubble {
+  position: absolute;
+  /* ANI-10: centered on origin point per guide */
+  top: 50%;
+  left: 50%;
+
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  /* CLOSED STATE — collapsed at center per guide */
+  transform: translate(-50%, -50%) scale(0.62) translateZ(0);
+  opacity: 0;
+  pointer-events: none;
+
+  /* THE TRANSITION — strictly following annimation.md */
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms ease-out;
+
+  will-change: transform, opacity;
+  /* CSS containment: tells the browser each bubble is self-contained so layout
+     and style recalcs for one bubble do not invalidate its siblings */
+  contain: layout style;
+  /* Force GPU compositing layer — eliminates rasterisation on each paint */
+  backface-visibility: hidden;
+  overflow: visible;
+  z-index: 5;
+}
+
+.bubbleSurface {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--bubble-fill);
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  box-shadow: var(--bubble-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out,
+    background 150ms ease-out;
+}
+
+/* Paint fill and surface in one layer to avoid compositor seams at the fill edge. */
+@property --fill-percent {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
+.fillSurface {
+  background: linear-gradient(
+    to top,
+    var(--bubble-adjustment-fill) 0%,
+    var(--bubble-adjustment-fill) var(--fill-percent),
+    var(--ring-surface) var(--fill-percent),
+    var(--ring-surface) 100%
+  );
+  transition:
+    --fill-percent 150ms ease-out,
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+/* OPEN STATE — translate to radial position per guide formula */
+.bubbleVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1) translateZ(0);
+}
+
+.bubble:focus {
+  outline: none;
+}
+
+.bubble:focus-visible .bubbleSurface {
+  border-color: var(--ring-accent);
+  box-shadow: var(--bubble-shadow);
+}
+
+/* Hover aesthetics — kept from previous MX style */
+.hovered {
+  z-index: 10;
+  /* Faster transition for hover state specifically */
+  transition:
+    transform 150ms ease-out,
+    opacity 0.22s ease;
+}
+
+.hovered .bubbleSurface:not(.fillSurface):not(.groupSurface) {
+  background: var(--ring-surface-hover);
+  border-color: var(--ring-border-hover);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
+  transition:
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out,
+    background 150ms ease-out;
+}
+
+/* Hover-specific scale up (+2px diameter) */
+.hovered.bubbleVisible {
+  transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.08) translateZ(0);
+}
+
+.active .bubbleSurface {
+  background: var(--ring-accent-fill) !important;
+  border-color: color-mix(in srgb, var(--ring-accent) 80%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 25%, transparent);
+}
+
+.icon {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  transition: transform 150ms ease-out;
+}
+
+.iconOverlayWrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 24px;
+  overflow: hidden;
+  pointer-events: none;
+  /* Smoothly transition the reveal line */
+  transition: height 150ms ease-out;
+}
+
+.iconOverlayInner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  line-height: 1.2;
+  color: #ffffff;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.noStroke .bubbleSurface {
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke) !important;
+}
+
+.hovered .label {
+  opacity: 1;
+}
+
+/* Persistent sub-ring labels (F4.1) — always visible, sit beside the bubble */
+.labelPersistent {
+  opacity: 1;
+}
+
+.labelSideRight {
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+  max-width: 110px;
+  text-align: left;
+}
+
+.labelSideLeft {
+  top: 50%;
+  left: auto;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  max-width: 110px;
+  text-align: right;
+}
+
+.groupBubble {
+  isolation: isolate;
+}
+
+.groupSurface {
+  background: var(--bubble-fill);
+  border: 0;
+  box-shadow: var(--bubble-shadow);
+}
+
+.hovered .groupSurface {
+  background: var(--ring-surface-hover);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
+}
+
+.groupDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--bubble-nub-width);
+  height: var(--bubble-nub-height);
+  transform: translate(-50%, -50%) rotate(var(--group-dot-angle, 0rad)) translateX(29px);
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: var(--ring-accent);
+  box-shadow: none;
+  pointer-events: none;
+  z-index: 0;
+}

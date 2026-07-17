@@ -1,0 +1,162 @@
+/* In the Electron overlay the window IS the ring — no fullscreen overlay needed */
+
+/* Ring container — 400×400, fills the transparent window */
+.ring {
+  --ring-surface: #1e2128;
+  --ring-surface-hover: #262a33;
+  --ring-on-surface: #f0f1f3;
+  --ring-border-default: #383d48;
+  --ring-border-hover: #4a505d;
+
+  position: relative;
+  width: 400px;
+  height: 400px;
+  pointer-events: none;
+  will-change: transform, opacity;
+  /* Promote ring to its own GPU compositing layer */
+  transform-origin: top left;
+  backface-visibility: hidden;
+}
+
+/* Center close button */
+.centerBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--bubble-shadow);
+  transform: translate(-50%, -50%) scale(0.62);
+  opacity: 0;
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms ease-out;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.centerBtnVisible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.centerBtn:hover {
+  transform: translate(-50%, -50%) scale(1.1) !important;
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: var(--bubble-shadow);
+}
+
+.centerBtn svg {
+  opacity: 0.52;
+}
+
+/* Sub-ring parent anchor (F4.1) — the folder bubble stays in place, highlighted,
+   and acts as the "back" affordance. Positioned at the parent's coords via inline
+   left/top; centered on that point with translate(-50%, -50%). */
+.subRingParentAnchor {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  pointer-events: auto;
+  z-index: 12;
+  transform: translate(-50%, -50%) translate(var(--parent-from-x, 0), var(--parent-from-y, 0)) scale(0.85);
+  opacity: 0;
+  transition:
+    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 140ms ease-out;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  isolation: isolate;
+}
+
+.subRingParentAnchorVisible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.subRingParentAnchor:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.subRingParentAnchor:focus-visible {
+  outline: 2px solid var(--ring-on-surface);
+  outline-offset: 4px;
+}
+
+.subRingParentSurface {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bubble-fill);
+  border: 2px solid var(--ring-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 18%, transparent);
+  transition: box-shadow 150ms ease-out;
+}
+
+.subRingParentAnchor:hover .subRingParentSurface {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 18%, transparent);
+}
+
+/* Small dot on the parent's edge pointing along the arc axis (matches spec image). */
+.connectorDot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--bubble-nub-width);
+  height: var(--bubble-nub-height);
+  border-radius: 0 999px 999px 0;
+  background: var(--ring-accent);
+  box-shadow: none;
+  transform: translate(-50%, -50%) rotate(var(--axis-deg, 0deg)) translateX(29px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.actionError {
+  position: absolute;
+  left: 50%;
+  bottom: 19px;
+  z-index: 30;
+  width: max-content;
+  max-width: 250px;
+  padding: 7px 10px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 92, 92, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(37, 14, 20, 0.94);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}

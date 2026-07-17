@@ -1,0 +1,44 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Overlay window: 400×400 transparent background */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html, body {
+  background: transparent;
+}
+
+/* One alpha step keeps transparent pixels mouse-active without a visible panel. */
+#root {
+  background: rgba(0, 0, 0, 0.004);
+}
+
+/* Prevent default drag behavior */
+* {
+  -webkit-user-drag: none;
+}
+
+/* Reduced motion support (F1.9) — collapses all CSS transition/animation
+   durations to near-zero. Covers the main ring bubbles and center/back
+   button, which are driven by CSS transitions (className toggles), not
+   WAAPI. `!important` here beats the component-level `transition: ...`
+   shorthand declarations (e.g. Bubble.module.css, RingContainer.module.css)
+   regardless of selector specificity, since importance is resolved before
+   specificity in the cascade. The WAAPI-driven sub-ring path is handled
+   through the same CSS transitions as the main ring. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

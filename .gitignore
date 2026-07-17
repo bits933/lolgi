@@ -1,0 +1,24 @@
+# Dependencies (installed libraries — never uploaded)
+node_modules
+
+# Build output (auto-generated when you build the app)
+dist
+.vite
+release/
+out/
+
+# Temporary / scratch files
+tmp/
+output/
+
+# Personal machine settings (yours only — don't share)
+.claude/settings.local.json
+*.local
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Markdown notes & docs — keep on your computer, don't upload
+# (planning docs, debug reports, AI-tool config, etc.)
+*.md

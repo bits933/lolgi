@@ -1,0 +1,81 @@
+/* Inner Circle — persistent button centered on screen */
+.innerCircle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999998;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 200ms ease-out,
+    opacity 200ms ease-out;
+  pointer-events: auto;
+}
+
+.innerCircle:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow:
+    0 0 16px rgba(123, 104, 238, 0.4),
+    0 0 30px rgba(123, 104, 238, 0.15);
+  border-color: rgba(123, 104, 238, 0.8);
+}
+
+.innerCircle:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+/* Hidden state — shrink and fade */
+.hidden {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.5);
+  pointer-events: none;
+}
+
+/* Icon container — handles the morph rotation */
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.iconWrapOpen {
+  transform: rotate(90deg);
+}
+
+/* Ring center version — same style, positioned at ring center */
+.ringCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.ringCenter:hover {
+  box-shadow:
+    0 0 16px rgba(123, 104, 238, 0.4),
+    0 0 30px rgba(123, 104, 238, 0.15);
+  border-color: rgba(123, 104, 238, 0.8);
+}

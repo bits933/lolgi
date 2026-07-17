@@ -1,0 +1,70 @@
+{
+  "name": "logi-actions-ring",
+  "version": "1.0.0",
+  "description": "Logitech MX Actions Ring — Electron Desktop App",
+  "main": "dist/main-bundled.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:overlay\" \"npm run dev:dashboard\" \"npm run dev:main\"",
+    "dev:overlay": "vite build --config vite.config.overlay.ts --watch",
+    "dev:dashboard": "vite build --config vite.config.dashboard.ts --watch",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "build": "npm run build:overlay && npm run build:dashboard && npm run build:main",
+    "build:overlay": "vite build --config vite.config.overlay.ts",
+    "build:dashboard": "vite build --config vite.config.dashboard.ts",
+    "build:main": "esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main-bundled.js --external:electron --external:electron-store --external:loudness --format=cjs --target=node18 && esbuild src/preload/overlay.ts --bundle --platform=node --outfile=dist/preload-overlay.js --external:electron --format=cjs --target=node18 && esbuild src/preload/dashboard.ts --bundle --platform=node --outfile=dist/preload-dashboard.js --external:electron --format=cjs --target=node18 && esbuild src/preload/outsideClick.ts --bundle --platform=node --outfile=dist/preload-outside-click.js --external:electron --format=cjs --target=node18",
+    "electron": "electron .",
+    "start": "npm run build && npm run electron",
+    "bubble": "npm run build && node -e \"delete process.env.ELECTRON_RUN_AS_NODE; delete process.env.VSCODE_ESM_ENTRYPOINT; require('child_process').spawnSync('npm run electron',{stdio:'inherit',shell:true,env:process.env})\"",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "loudness": "0.4.2",
+    "lucide-react": "0.446.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "uuid": "11.1.1",
+    "zustand": "4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "18.3.5",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.1",
+    "concurrently": "^8.2.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "5.5.3",
+    "vite": "5.4.21",
+    "vitest": "^2.1.9"
+  },
+  "overrides": {
+    "fast-uri": "3.1.2"
+  },
+  "build": {
+    "appId": "com.logitech.actionsring",
+    "productName": "Logi Actions Ring",
+    "files": [
+      "dist/**/*",
+      "src/assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources/"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "resources/app-icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}

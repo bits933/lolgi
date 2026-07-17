@@ -1,0 +1,13 @@
+.overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: var(--overlay-scrim); backdrop-filter: blur(8px); }
+.dialog { width: min(460px, calc(100vw - 32px)); padding: var(--space-6); display: grid; grid-template-columns: 44px 1fr; gap: var(--space-4); border: 1px solid var(--border-hover); border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--shadow-modal); }
+.icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--radius-md); color: var(--warning); background: var(--warning-muted); border: 1px solid var(--warning-border); }
+.copy h2 { color: var(--text-primary); font-size: var(--fs-md); font-weight: 700; letter-spacing: -0.2px; }
+.copy p { margin-top: var(--space-2); color: var(--text-tertiary); font-size: var(--fs-sm); line-height: var(--lh-normal); }
+.error { grid-column: 1 / -1; padding: var(--space-3); display: flex; align-items: flex-start; gap: var(--space-2); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); color: var(--danger); background: var(--danger-muted); font-size: var(--fs-sm); line-height: var(--lh-normal); }
+.error svg { flex: 0 0 auto; margin-top: 1px; }
+.actions { grid-column: 1 / -1; margin-top: var(--space-2); display: flex; justify-content: flex-end; gap: var(--space-2); }
+.actions button { height: var(--control-md); padding: 0 var(--space-4); border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
+.keep { margin-right: auto; border: 1px solid var(--border-default); color: var(--text-secondary); background: transparent; }
+.discard { border: 1px solid var(--danger-border); color: var(--danger); background: var(--danger-muted); }
+.save { border: 1px solid transparent; color: var(--text-on-accent); background: var(--accent-fill); }
+.actions button:disabled { opacity: 0.45; cursor: not-allowed; }
