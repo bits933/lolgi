@@ -1,29 +1,48 @@
 appId: com.logitech.actionsring
 productName: Logi Actions Ring
-copyright: Copyright © 2025
+copyright: Copyright © 2026
+asar: true
 
 directories:
   output: release
   buildResources: resources
 
+# Keep staging (`dist`) and packaged output (`release`) separate. The explicit
+# allowlist prevents stale installers, win-unpacked trees, or builder metadata
+# from ever being copied into app.asar.
 files:
-  - dist/**/*
-  - src/assets/**/*
-  - package.json
+  - from: .
+    to: .
+    filter:
+      - package.json
+  - from: dist
+    to: dist
+    filter:
+      - build-info.json
+      - main-bundled.js
+      - preload-dashboard.js
+      - preload-overlay.js
+      - renderer/dashboard/**/*
+      - renderer/overlay/**/*
+  - from: src/assets
+    to: src/assets
+    filter:
+      - "**/*"
 
 extraResources:
   - from: resources/
     to: resources/
     filter:
-      - "**/*"
+      - app-icon.png
 
 win:
   target:
     - target: nsis
       arch:
         - x64
-  icon: resources/app-icon.ico
+  icon: app-icon.png
   requestedExecutionLevel: asInvoker
+  artifactName: "${productName} Setup ${version}.${ext}"
 
 nsis:
   oneClick: true
@@ -31,7 +50,3 @@ nsis:
   allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
-
-publish:
-  provider: github
-  releaseType: draft

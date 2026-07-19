@@ -402,6 +402,44 @@ function FieldControl({ field, assignment, profiles, onChange }: FieldControlPro
   );
 }
 
+function SetupNotice({
+  definition,
+  assignment,
+}: {
+  definition: ActionDefinition | null | undefined;
+  assignment: ActionAssignment;
+}): React.ReactElement | null {
+  if (definition?.availability !== 'requires-setup') return null;
+  const instructions = definition.setupInstructions
+    ?? String(assignment.parameters?.setupInstructions ?? '');
+  return (
+    <div className={styles.setupNotice}>
+      <AlertTriangle size={15} />
+      <div>
+        <strong>Needs 1-minute setup</strong>
+        <p>{instructions || 'Bind the shortcut shown below in the application before using this action.'}</p>
+      </div>
+    </div>
+  );
+}
+
+function VerificationNotice({
+  definition,
+}: {
+  definition: ActionDefinition | null | undefined;
+}): React.ReactElement | null {
+  if (definition?.verification !== 'unverified') return null;
+  return (
+    <div className={styles.verificationNotice} role="note">
+      <AlertTriangle size={15} />
+      <div>
+        <strong>Needs verification</strong>
+        <p>This default binding hasn&rsquo;t been confirmed live in the app yet, so it may need adjusting for your version, layout, or keymap.</p>
+      </div>
+    </div>
+  );
+}
+
 function GroupChildren({
   assignment,
   profiles,
@@ -414,8 +452,13 @@ function GroupChildren({
   const [newDefinitionId, setNewDefinitionId] = useState('copy');
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const children = assignment.children ?? [];
+  const groupAppId = ACTION_DEFINITIONS.get(assignment.definitionId)?.appId;
   const available = ACTION_CATALOG.filter(
-    (definition) => definition.category !== 'structural' && !definition.availability
+    (definition) =>
+      definition.category !== 'structural'
+      && definition.availability !== 'requires-device'
+      && definition.availability !== 'requires-plugin'
+      && (definition.category !== 'app' || definition.appId === groupAppId)
   );
 
   const updateChildren = (next: BubbleConfig[]) => onChange({ ...assignment, children: next });
@@ -484,6 +527,8 @@ function GroupChildren({
               <span>Label</span>
               <input value={childAssignment.label} onChange={(event) => updateChild({ ...childAssignment, label: event.target.value })} />
             </label>
+            <SetupNotice definition={childDefinition} assignment={childAssignment} />
+            <VerificationNotice definition={childDefinition} />
             {childDefinition?.editorFields.map((field) => (
               <FieldControl key={field.key} field={field} assignment={childAssignment} profiles={profiles} onChange={updateChild} />
             ))}
@@ -558,6 +603,9 @@ export function ActionToolbar({
               <span>{definition?.category ?? 'custom'}</span>
               <strong>{definition?.label ?? assignment.definitionId}</strong>
             </div>
+
+            <SetupNotice definition={definition} assignment={assignment} />
+            <VerificationNotice definition={definition} />
 
             <label className={styles.field}>
               <span>Label</span>

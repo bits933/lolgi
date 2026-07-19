@@ -28,33 +28,36 @@ export function createEmptySlots(count = DEFAULT_SLOT_COUNT): RingSlot[] {
 
 export function bubbleToAssignment(bubble: BubbleConfig): ActionAssignment {
   const fillActions = [bubble.scrollUpAction, bubble.scrollDownAction];
-  let definitionId: string = bubble.actionType;
-  if (bubble.type === 'fill') {
-    if (fillActions.some((action) => action === 'volume-up' || action === 'volume-down')) definitionId = 'adjust-volume';
-    else if (fillActions.some((action) => action === 'brightness-up' || action === 'brightness-down')) definitionId = 'adjust-brightness';
-    else if (fillActions.some((action) => action === 'zoom-in' || action === 'zoom-out')) definitionId = 'adjust-zoom';
-    else if (bubble.scrollUpAction === 'Up' && bubble.scrollDownAction === 'Down') definitionId = 'adjust-scroll';
-    else definitionId = 'adjust-shortcut-pair';
-  } else if (bubble.type === 'menu') {
-    definitionId = 'morph-group';
-  } else {
-    const legacyDefinitionIds: Partial<Record<BubbleConfig['actionType'], string>> = {
-      'clipboard-copy': 'copy',
-      'clipboard-paste': 'paste',
-      'clipboard-cut': 'cut',
-      'clipboard-undo': 'undo',
-      'clipboard-redo': 'redo',
-      screenshot: 'screenshot-region',
-      'keyboard-shortcut': 'keystroke',
-      'keyboard-sequence': 'keystroke-sequence',
-      'app-launch': 'open-app',
-      'file-open': 'open-file',
-      'folder-open': 'open-folder',
-      'url-open': 'open-url',
-      'run-command': 'run-command',
-      macro: 'custom-action',
-    };
-    definitionId = legacyDefinitionIds[bubble.actionType] ?? bubble.actionType;
+  let definitionId: string = bubble.definitionId ?? '';
+  if (!definitionId) {
+    definitionId = bubble.actionType;
+    if (bubble.type === 'fill') {
+      if (fillActions.some((action) => action === 'volume-up' || action === 'volume-down')) definitionId = 'adjust-volume';
+      else if (fillActions.some((action) => action === 'brightness-up' || action === 'brightness-down')) definitionId = 'adjust-brightness';
+      else if (fillActions.some((action) => action === 'zoom-in' || action === 'zoom-out')) definitionId = 'adjust-zoom';
+      else if (bubble.scrollUpAction === 'Up' && bubble.scrollDownAction === 'Down') definitionId = 'adjust-scroll';
+      else definitionId = 'adjust-shortcut-pair';
+    } else if (bubble.type === 'menu') {
+      definitionId = 'morph-group';
+    } else {
+      const legacyDefinitionIds: Partial<Record<BubbleConfig['actionType'], string>> = {
+        'clipboard-copy': 'copy',
+        'clipboard-paste': 'paste',
+        'clipboard-cut': 'cut',
+        'clipboard-undo': 'undo',
+        'clipboard-redo': 'redo',
+        screenshot: 'screenshot-region',
+        'keyboard-shortcut': 'keystroke',
+        'keyboard-sequence': 'keystroke-sequence',
+        'app-launch': 'open-app',
+        'file-open': 'open-file',
+        'folder-open': 'open-folder',
+        'url-open': 'open-url',
+        'run-command': 'run-command',
+        macro: 'custom-action',
+      };
+      definitionId = legacyDefinitionIds[bubble.actionType] ?? bubble.actionType;
+    }
   }
   return {
     id: bubble.id,
@@ -88,6 +91,7 @@ export function bubblesToSlots(bubbles: BubbleConfig[], minimumCount = 0): RingS
 export function assignmentToBubble(assignment: ActionAssignment, angleIndex: number): BubbleConfig {
   return {
     id: assignment.id,
+    definitionId: assignment.definitionId,
     label: assignment.label,
     iconName: assignment.iconName,
     iconNameAlt: assignment.iconNameAlt,

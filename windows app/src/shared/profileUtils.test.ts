@@ -46,7 +46,7 @@ describe('Dashboard V2 profile utilities', () => {
 
   it('round-trips legacy bubbles without losing their IDs or action data', () => {
     const result = slotsToBubbles(bubblesToSlots([bubble]));
-    expect(result).toEqual([bubble]);
+    expect(result).toEqual([{ ...bubble, definitionId: 'copy' }]);
   });
 
   it('maps legacy action types and fill bubbles to catalog definition IDs', () => {
@@ -60,6 +60,20 @@ describe('Dashboard V2 profile utilities', () => {
     }])[0];
     expect(copySlot.assignment?.definitionId).toBe('copy');
     expect(volumeSlot.assignment?.definitionId).toBe('adjust-volume');
+  });
+
+  it('preserves explicit app-action definition IDs through bubble conversion', () => {
+    const appBubble: BubbleConfig = {
+      ...bubble,
+      definitionId: 'photoshop-history',
+      actionType: 'keyboard-shortcut',
+      type: 'fill',
+      payload: 'Ctrl+Z',
+      scrollUpAction: 'Ctrl+Shift+Z',
+      scrollDownAction: 'Ctrl+Z',
+    };
+    const result = slotsToBubbles(bubblesToSlots([appBubble]));
+    expect(result).toEqual([appBubble]);
   });
 
   it('creates a protected General profile', () => {
@@ -85,7 +99,9 @@ describe('Dashboard V2 profile utilities', () => {
   it('round-trips morphing-group children without losing settings', () => {
     const child = { ...bubble, id: 'child-1', parameters: { step: 5 } };
     const menu = { ...bubble, id: 'menu-1', label: 'Tools', type: 'menu' as const, children: [child] };
-    expect(slotsToBubbles(bubblesToSlots([menu]))).toEqual([menu]);
+    expect(slotsToBubbles(bubblesToSlots([menu]))).toEqual([
+      { ...menu, definitionId: 'morph-group' },
+    ]);
   });
 
   it('renames the legacy default group label without changing custom names', () => {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { OverlayStore, RingOpenPayload, SystemState } from '../../../shared/types';
-import { DEFAULT_ACCENT_COLOR, DEFAULT_ACCENT_FILL_COLOR, DEFAULT_RING_SIZE } from '../../../shared/constants';
+import { DEFAULT_ACCENT_COLOR, DEFAULT_ACCENT_FILL_COLOR, DEFAULT_BUBBLE_COLOR, DEFAULT_RING_SIZE } from '../../../shared/constants';
+import { resolveBubbleSurface } from '../../../shared/themeColors';
 
 const DEFAULT_SYSTEM_STATE: SystemState = {
   volumeLevel: 0.5,
@@ -19,6 +20,7 @@ export const useOverlayStore = create<OverlayStore>((set) => ({
   accentColor: DEFAULT_ACCENT_COLOR,
   accentFillColor: DEFAULT_ACCENT_FILL_COLOR,
   accentForegroundColor: '#ffffff',
+  bubbleSurface: resolveBubbleSurface(DEFAULT_BUBBLE_COLOR),
   bubbleFillLevels: {},
 
   openRing: (payload: RingOpenPayload) =>
@@ -32,6 +34,7 @@ export const useOverlayStore = create<OverlayStore>((set) => ({
       accentColor: payload.accentColor,
       accentFillColor: payload.accentFillColor,
       accentForegroundColor: payload.accentForegroundColor,
+      bubbleSurface: payload.bubbleSurface,
       // Reset per-bubble fill levels on each open so stale values don't persist
       bubbleFillLevels: {},
     }),

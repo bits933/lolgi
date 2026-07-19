@@ -90,7 +90,7 @@ export function RingPreview({ bubbles, selectedId, onSelectBubble }: RingPreview
                   style={{ objectFit: 'contain', borderRadius: 5, display: 'block' }}
                 />
               ) : (
-                <Icon size={22} color={isSelected || isHovered ? 'var(--accent)' : '#2d2d3a'} strokeWidth={2} />
+                <Icon size={22} color={isSelected || isHovered ? 'var(--accent)' : 'var(--bubble-icon)'} strokeWidth={2} />
               )}
 
               {/* Label — shows on hover */}

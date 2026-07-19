@@ -1,9 +1,10 @@
-import React from 'react';
-import { CircleDot, Info, Keyboard, MonitorCog, Power, RotateCcw, Sparkles } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CircleDot, Copy, Info, Keyboard, MonitorCog, Power, RotateCcw, Sparkles } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { DEFAULT_ACCENT_COLOR } from '../../../../shared/constants';
+import { DEFAULT_ACCENT_COLOR, DEFAULT_BUBBLE_COLOR } from '../../../../shared/constants';
 import { createEmptySlots, slotsToBubbles } from '../../../../shared/profileUtils';
-import type { RingSize, ThemeMode } from '../../../../shared/types';
+import type { RingSize, ThemeConfig, ThemeMode } from '../../../../shared/types';
+import type { RuntimeBuildIdentity } from '../../../../shared/buildInfo';
 import { HotkeyConfig } from '../HotkeyConfig/HotkeyConfig';
 import { RingPreview } from '../RingPreview/RingPreview';
 import styles from './GeneralSettings.module.css';
@@ -21,6 +22,11 @@ const THEME_MODE_OPTIONS: Array<{ value: ThemeMode; label: string; hint: string 
   { value: 'custom', label: 'Custom', hint: 'Pick accent' },
 ];
 
+function formatBuildTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'unknown build time' : date.toISOString();
+}
+
 export function GeneralSettings(): React.ReactElement {
   const config = useDashboardStore((state) => state.config);
   const setRingSize = useDashboardStore((state) => state.setRingSize);
@@ -29,22 +35,51 @@ export function GeneralSettings(): React.ReactElement {
   const setRingEnabled = useDashboardStore((state) => state.setRingEnabled);
   const setTriggerMode = useDashboardStore((state) => state.setTriggerMode);
   const saveProfile = useDashboardStore((state) => state.saveProfile);
+  const [buildIdentity, setBuildIdentity] = useState<RuntimeBuildIdentity | null>(null);
+  const [diagnosticStatus, setDiagnosticStatus] = useState('');
+  const [isCopyingDiagnostic, setIsCopyingDiagnostic] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void window.electronAPI.getBuildIdentity()
+      .then((identity) => {
+        if (active) setBuildIdentity(identity);
+      })
+      .catch(() => {
+        if (active) setDiagnosticStatus('Build identity is unavailable.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!config) return <div className={styles.loading}>Loading settings...</div>;
 
   const generalProfile = config.profiles.find((profile) => profile.id === config.generalProfileId);
   const themeMode = config.theme?.mode ?? 'dark';
   const accentColor = config.theme?.accentColor ?? DEFAULT_ACCENT_COLOR;
+  const bubbleColor = config.theme?.bubbleColor ?? DEFAULT_BUBBLE_COLOR;
 
-  const handleThemeChange = (mode: ThemeMode, nextAccentColor = accentColor) => {
-    if (mode === themeMode && nextAccentColor === accentColor) return;
-    void setTheme({ mode, accentColor: nextAccentColor });
+  const applyTheme = (patch: Partial<ThemeConfig>) => {
+    void setTheme({ mode: themeMode, accentColor, bubbleColor, ...patch });
   };
 
   const handleReset = async () => {
     if (!generalProfile) return;
     if (!window.confirm('Clear the General profile and restore five empty bubbles? Other profiles and settings will not change.')) return;
     await saveProfile({ ...generalProfile, slots: createEmptySlots() });
+  };
+
+  const handleCopyDiagnostic = async () => {
+    setIsCopyingDiagnostic(true);
+    try {
+      const result = await window.electronAPI.copyLastDiagnostic();
+      setDiagnosticStatus(result.message);
+    } catch {
+      setDiagnosticStatus('Diagnostics are unavailable in this build.');
+    } finally {
+      setIsCopyingDiagnostic(false);
+    }
   };
 
   return (
@@ -86,7 +121,7 @@ export function GeneralSettings(): React.ReactElement {
             <div className={styles.optionLabel}>Dashboard theme</div>
             <div className={styles.threeSegments} role="group" aria-label="Dashboard theme">
               {THEME_MODE_OPTIONS.map((option) => (
-                <button key={option.value} type="button" className={themeMode === option.value ? styles.segmentActive : ''} onClick={() => handleThemeChange(option.value)} aria-pressed={themeMode === option.value}>
+                <button key={option.value} type="button" className={themeMode === option.value ? styles.segmentActive : ''} onClick={() => applyTheme({ mode: option.value })} aria-pressed={themeMode === option.value}>
                   <strong>{option.label}</strong><small>{option.hint}</small>
                 </button>
               ))}
@@ -94,9 +129,19 @@ export function GeneralSettings(): React.ReactElement {
             {themeMode === 'custom' && (
               <div className={styles.row}>
                 <div><strong>Accent color</strong><small>Used for selections, controls, and ring highlights.</small></div>
-                <label className={styles.colorPicker}><input type="color" value={accentColor} onChange={(event) => handleThemeChange('custom', event.target.value)} /><span>{accentColor}</span></label>
+                <label className={styles.colorPicker}><input type="color" value={accentColor} onChange={(event) => applyTheme({ accentColor: event.target.value })} /><span>{accentColor}</span></label>
               </div>
             )}
+            <div className={styles.row}>
+              <div><strong>Bubble color</strong><small>Background color of the ring's action bubbles. Icons adjust automatically for contrast.</small></div>
+              <label className={styles.colorPicker}>
+                <input type="color" value={bubbleColor} onChange={(event) => applyTheme({ bubbleColor: event.target.value })} />
+                <span>{bubbleColor}</span>
+                {bubbleColor.toLowerCase() !== DEFAULT_BUBBLE_COLOR && (
+                  <button type="button" className={styles.colorReset} onClick={() => applyTheme({ bubbleColor: DEFAULT_BUBBLE_COLOR })} title="Reset to default">Reset</button>
+                )}
+              </label>
+            </div>
             <div className={styles.optionLabel}>Overlay ring size</div>
             <div className={styles.threeSegments} role="group" aria-label="Actions Ring size">
               {RING_SIZE_OPTIONS.map((option) => (
@@ -128,7 +173,48 @@ export function GeneralSettings(): React.ReactElement {
 
           <section className={styles.aboutCard}>
             <Info size={16} />
-            <div><strong>Logi Actions Ring 1.0.0</strong><small>Dashboard V2 configuration schema {config.schemaVersion}. All profile data stays on this device.</small></div>
+            <div className={styles.aboutBody}>
+              <div className={styles.aboutHeading}>
+                <div>
+                  <strong>Logi Actions Ring {buildIdentity ? `v${buildIdentity.version}` : ''}</strong>
+                  <small>Diagnostics and build identity</small>
+                </div>
+                <button
+                  type="button"
+                  className={styles.diagnosticButton}
+                  onClick={() => void handleCopyDiagnostic()}
+                  disabled={isCopyingDiagnostic}
+                >
+                  <Copy size={13} />
+                  {isCopyingDiagnostic ? 'Copying...' : 'Copy last diagnostic'}
+                </button>
+              </div>
+              {buildIdentity ? (
+                <div className={styles.buildDetails}>
+                  <span>
+                    Version {buildIdentity.version}
+                    {' · '}
+                    {buildIdentity.mode}
+                    {' · '}
+                    {formatBuildTime(buildIdentity.builtAtUtc)}
+                  </span>
+                  <code title={buildIdentity.gitCommit}>
+                    Commit {buildIdentity.gitCommit}
+                    {buildIdentity.dirty ? ' + local changes' : ''}
+                  </code>
+                  <code title={buildIdentity.sourceFingerprint}>
+                    Source SHA-256 {buildIdentity.sourceFingerprint}
+                  </code>
+                  <code title={buildIdentity.execPath}>Executable {buildIdentity.execPath}</code>
+                </div>
+              ) : (
+                <small>Loading build identity...</small>
+              )}
+              <small>
+                Configuration schema {config.schemaVersion}. Diagnostic snapshots stay on this device and omit window/document titles.
+              </small>
+              {diagnosticStatus && <span className={styles.diagnosticStatus} aria-live="polite">{diagnosticStatus}</span>}
+            </div>
           </section>
         </main>
 

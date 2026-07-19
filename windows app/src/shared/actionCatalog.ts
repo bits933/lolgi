@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AI_BRAND_ICONS, AI_PROVIDERS } from './brandIcons';
 import { MAX_FOLDER_CHILDREN } from './constants';
+import { APP_ACTION_CATALOG } from './defaultProfiles';
 import { bubbleToAssignment } from './profileUtils';
+import { validateShortcut } from './shortcutParser';
 import type { ActionAssignment, ActionDefinition, ActionEditorField, ActionType } from './types';
 
 const LABEL_ICON_FIELDS: ActionEditorField[] = [];
@@ -187,6 +189,8 @@ export const ACTION_CATALOG: ActionDefinition[] = [
     unavailableReason: 'Easy-Switch requires a verified compatible-device adapter and is not available in this build.',
   }),
 
+  ...APP_ACTION_CATALOG,
+
   definition('custom-action', 'Custom action', 'Build a macro with shortcuts, apps, URLs, files, and delays.', 'custom', 'WandSparkles', 'macro', {
     editorFields: [{ key: 'payload', label: 'Macro steps', type: 'textarea', placeholder: 'Ctrl+C; delay:100; url:https://example.com', required: true }],
   }),
@@ -198,6 +202,13 @@ export function createAssignmentFromDefinition(definitionId: string): ActionAssi
   const item = ACTION_DEFINITIONS.get(definitionId);
   if (!item || item.availability === 'requires-device' || item.availability === 'requires-plugin') return null;
   const parameters: Record<string, string | number | boolean> = {};
+  if (item.availability === 'requires-setup') {
+    parameters.requiresSetup = true;
+    if (item.setupInstructions) parameters.setupInstructions = item.setupInstructions;
+  }
+  if (item.category === 'app' && item.bubbleType === 'fill') {
+    parameters.appAdjustment = true;
+  }
   for (const field of item.editorFields) {
     if (field.key === 'step') parameters[field.key] = 5;
     if (field.key === 'clickAction') parameters[field.key] = 'volume-mute';
@@ -226,7 +237,10 @@ export function createAssignmentFromDefinition(definitionId: string): ActionAssi
 export function validateAssignment(assignment: ActionAssignment): string | null {
   const definitionItem = ACTION_DEFINITIONS.get(assignment.definitionId);
   if (!definitionItem) return 'The selected action is no longer available.';
-  if (definitionItem.availability && definitionItem.availability !== 'available') {
+  if (
+    definitionItem.availability === 'requires-device'
+    || definitionItem.availability === 'requires-plugin'
+  ) {
     return definitionItem.unavailableReason ?? 'This action is unavailable.';
   }
   if (assignment.children && assignment.children.length > MAX_FOLDER_CHILDREN) {
@@ -256,17 +270,22 @@ export function validateAssignment(assignment: ActionAssignment): string | null 
     if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
       return 'Complete the required action setting before saving.';
     }
+    // Every 'shortcut' field carries a single key chord (click shortcut, wheel-up
+    // and wheel-down bindings). Reject unknown tokens, modifier-only entries, and
+    // duplicate/multiple main keys before they can be saved — otherwise the chord
+    // "succeeds" at runtime while sending only a bare modifier. Macro and
+    // keyboard-sequence payloads use a 'textarea' field and are handled below.
+    if (field.type === 'shortcut' && typeof value === 'string' && value.trim()) {
+      const shortcutError = validateShortcut(value);
+      if (shortcutError) return `${field.label}: ${shortcutError}`;
+    }
   }
 
   if (assignment.actionType === 'keyboard-sequence' && assignment.payload) {
-    const modifiers = new Set(['ctrl', 'control', 'alt', 'shift', 'meta', 'win', 'cmd', 'command']);
     for (const step of assignment.payload.split(/[;\n]/).map((value) => value.trim()).filter(Boolean)) {
       if (/^(?:delay:)?\d+ms$/i.test(step)) continue;
-      const tokens = step.split('+').map((value) => value.trim()).filter(Boolean);
-      const hasKey = tokens.some((token) => !modifiers.has(token.toLowerCase()));
-      if (!/^[\w+\s]+$/.test(step) || !hasKey) {
-        return `Step "${step}" is not a shortcut or a delay like 250ms.`;
-      }
+      const stepError = validateShortcut(step);
+      if (stepError) return `Step "${step}": ${stepError}`;
     }
   }
 

@@ -9,9 +9,9 @@ describe('Dashboard V2 action catalog', () => {
 
   it('covers every requested action family', () => {
     expect(new Set(ACTION_CATALOG.map((item) => item.category))).toEqual(
-      new Set(['system', 'adjustments', 'basic', 'structural', 'custom'])
+      new Set(['system', 'adjustments', 'basic', 'structural', 'app', 'custom'])
     );
-    for (const id of ['copy', 'screenshot-region', 'volume-up', 'adjust-volume', 'keystroke-sequence', 'open-folder', 'run-command', 'switch-profile', 'morph-group', 'easy-switch-1', 'custom-action']) {
+    for (const id of ['copy', 'screenshot-region', 'volume-up', 'adjust-volume', 'keystroke-sequence', 'open-folder', 'run-command', 'switch-profile', 'morph-group', 'photoshop-history', 'figma-auto-layout', 'easy-switch-1', 'custom-action']) {
       expect(ACTION_CATALOG.some((item) => item.id === id), id).toBe(true);
     }
   });
@@ -23,6 +23,9 @@ describe('Dashboard V2 action catalog', () => {
     expect(createAssignmentFromDefinition('adjust-volume')?.parameters).toMatchObject({ step: 5, clickAction: 'volume-mute' });
     expect(createAssignmentFromDefinition('open-app')?.parameters?.focusIfRunning).toBe(true);
     expect(createAssignmentFromDefinition('morph-group')?.label).toBe('Submenu');
+    const setupAction = createAssignmentFromDefinition('photoshop-brightness-contrast');
+    expect(setupAction?.parameters).toMatchObject({ requiresSetup: true });
+    expect(validateAssignment(setupAction!)).toBeNull();
     const aiLauncher = createAssignmentFromDefinition('ai-launcher');
     expect(aiLauncher?.label).toBe('ChatGPT');
     expect(aiLauncher?.payload).toBe('https://chatgpt.com');
@@ -64,7 +67,9 @@ describe('Dashboard V2 action catalog', () => {
     keyboardMacro.payload = 'Ctrl+K\n250ms\nCtrl+S';
     expect(validateAssignment(keyboardMacro)).toBeNull();
     keyboardMacro.payload = 'Ctrl+K\nnot/a/chord';
-    expect(validateAssignment(keyboardMacro)).toMatch(/not a shortcut/i);
+    expect(validateAssignment(keyboardMacro)).toMatch(/not a recognized key/i);
+    keyboardMacro.payload = 'Ctrl+K\nCtrl';
+    expect(validateAssignment(keyboardMacro)).toMatch(/main key/i);
   });
 
   it('validates child actions and blocks F4.2 nesting', () => {

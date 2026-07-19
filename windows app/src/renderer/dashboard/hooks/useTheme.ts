@@ -34,6 +34,13 @@ export function useTheme(): void {
     root.style.setProperty('--border-accent-strong', colors.borderAccentStrong);
     root.style.setProperty('--shadow-glow', colors.shadowGlow);
 
+    // Bubble surface tokens — drive the ring preview's bubble background/border/icon.
+    const bubble = colors.bubbleSurface;
+    root.style.setProperty('--bubble-fill', bubble.fill);
+    root.style.setProperty('--bubble-stroke', bubble.stroke);
+    root.style.setProperty('--bubble-icon', bubble.onSurface);
+    root.style.setProperty('--bubble-adjustment-fill', bubble.adjustmentFill);
+
     applyPalette();
 
     if (theme.mode === 'system') {

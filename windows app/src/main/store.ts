@@ -11,39 +11,19 @@ import type {
   RingSize,
   ThemeConfig,
 } from '../shared/types';
-import { DEFAULT_HOTKEY, DEFAULT_RING_SIZE, DEFAULT_THEME } from '../shared/constants';
 import {
-  CONFIG_SCHEMA_VERSION,
-  GENERAL_PROFILE_ID,
   appProfileToRingProfile,
-  assignmentToBubble,
-  bubbleToAssignment,
   bubblesToSlots,
-  createGeneralProfile,
-  normalizeGroupLabel,
   normalizeProcessName,
   ringProfileToAppProfile,
   slotsToBubbles,
 } from '../shared/profileUtils';
-import { ACTION_DEFINITIONS, validateAssignment } from '../shared/actionCatalog';
-
-function createDefaultConfig(): AppConfig {
-  const general = createGeneralProfile();
-  return {
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    generalProfileId: GENERAL_PROFILE_ID,
-    selectedGlobalProfileId: null,
-    profiles: [general],
-    hotkey: DEFAULT_HOTKEY,
-    bubbles: [],
-    launchAtStartup: false,
-    ringEnabled: true,
-    triggerMode: 'A',
-    ringSize: DEFAULT_RING_SIZE,
-    theme: DEFAULT_THEME,
-    appProfiles: [],
-  };
-}
+import {
+  createDefaultConfig,
+  migrateConfig,
+  syncCompatibilityViews,
+  validateProfile,
+} from './configMigration';
 
 let _store: Store<AppConfig> | null = null;
 let cachedConfig: AppConfig | null = null;
@@ -70,111 +50,6 @@ export function getConfigStore(): Store<AppConfig> {
     }
   }
   return _store;
-}
-
-function validateProfile(profile: RingProfile): string | null {
-  if (!profile || typeof profile !== 'object') return 'Profile data is invalid.';
-  if (typeof profile.id !== 'string' || typeof profile.name !== 'string' || !profile.id.trim() || !profile.name.trim()) {
-    return 'Profile ID and name are required.';
-  }
-  if (!Array.isArray(profile.slots)) return 'Profile ring slots are invalid.';
-  if (profile.slots.length < 2 || profile.slots.length > 12) return 'A ring must contain between two and twelve bubbles.';
-  if (profile.slots.some((slot) => !slot || typeof slot.id !== 'string')) return 'Ring slot data is invalid.';
-  if (new Set(profile.slots.map((slot) => slot.id)).size !== profile.slots.length) return 'Ring slot IDs must be unique.';
-  const assignments = profile.slots.flatMap((slot) => slot.assignment ? [slot.assignment] : []);
-  if (assignments.some((assignment) =>
-    typeof assignment !== 'object' ||
-    typeof assignment.id !== 'string' ||
-    typeof assignment.label !== 'string' ||
-    typeof assignment.definitionId !== 'string'
-  )) return 'Assigned action data is invalid.';
-  const assignmentIds = assignments.map((assignment) => assignment.id);
-  if (new Set(assignmentIds).size !== assignmentIds.length) return 'Assigned action IDs must be unique within a profile.';
-  for (const slot of profile.slots) {
-    if (!slot.assignment) continue;
-    if (!slot.assignment.label.trim()) return 'Assigned actions need a label.';
-    const assignmentError = validateAssignment(slot.assignment);
-    if (assignmentError) return assignmentError;
-  }
-  if (!['general', 'global', 'application'].includes(profile.kind)) return 'Profile type is invalid.';
-  if (
-    profile.kind === 'application' &&
-    (typeof profile.application?.processName !== 'string' || !profile.application.processName.trim())
-  ) {
-    return 'Choose an application for this profile.';
-  }
-  return null;
-}
-
-function syncCompatibilityViews(config: AppConfig): AppConfig {
-  const general = config.profiles.find((profile) => profile.id === config.generalProfileId);
-  const bubbles = general ? slotsToBubbles(general.slots) : [];
-  const appProfiles = config.profiles.flatMap((profile) => {
-    const legacy = ringProfileToAppProfile(profile);
-    return legacy ? [legacy] : [];
-  });
-  return { ...config, bubbles, appProfiles };
-}
-
-function migrateConfig(raw: Partial<AppConfig>): AppConfig {
-  if (raw.schemaVersion === CONFIG_SCHEMA_VERSION && Array.isArray(raw.profiles)) {
-    const hasGeneral = raw.profiles.some((profile) => profile.id === raw.generalProfileId);
-    const sourceProfiles = (hasGeneral
-      ? raw.profiles
-      : [createGeneralProfile(Array.isArray(raw.bubbles) ? raw.bubbles : []), ...raw.profiles]);
-    const profiles = sourceProfiles.map((profile) => {
-      if (!profile || typeof profile !== 'object' || !Array.isArray(profile.slots)) {
-        throw new Error('A V2 profile is missing its ring slots.');
-      }
-      const normalizedProfile: RingProfile = {
-        ...profile,
-        slots: profile.slots.map((slot, position) => {
-          if (!slot || typeof slot !== 'object') throw new Error('A V2 ring slot is invalid.');
-          if (!slot.assignment) return slot;
-          const definitionId = ACTION_DEFINITIONS.has(slot.assignment.definitionId)
-            ? slot.assignment.definitionId
-            : bubbleToAssignment(assignmentToBubble(slot.assignment, position)).definitionId;
-          const label = definitionId === 'morph-group'
-            ? normalizeGroupLabel(slot.assignment.label)
-            : slot.assignment.label;
-          if (definitionId === slot.assignment.definitionId && label === slot.assignment.label) return slot;
-          return { ...slot, assignment: { ...slot.assignment, definitionId, label } };
-        }),
-      };
-      const validationError = validateProfile(normalizedProfile);
-      if (validationError) throw new Error(validationError);
-      return normalizedProfile;
-    });
-    const selectedGlobalProfileId = profiles.some(
-      (profile) => profile.id === raw.selectedGlobalProfileId && profile.kind === 'global' && profile.enabled
-    ) ? raw.selectedGlobalProfileId ?? null : null;
-    return syncCompatibilityViews({
-      ...createDefaultConfig(),
-      ...raw,
-      schemaVersion: CONFIG_SCHEMA_VERSION,
-      generalProfileId: hasGeneral ? raw.generalProfileId ?? GENERAL_PROFILE_ID : GENERAL_PROFILE_ID,
-      selectedGlobalProfileId,
-      profiles,
-      ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
-      theme: raw.theme ?? DEFAULT_THEME,
-    } as AppConfig);
-  }
-
-  const legacyBubbles = Array.isArray(raw.bubbles) ? raw.bubbles : [];
-  const general = createGeneralProfile(legacyBubbles);
-  const migratedProfiles = Array.isArray(raw.appProfiles)
-    ? raw.appProfiles.map(appProfileToRingProfile)
-    : [];
-  return syncCompatibilityViews({
-    ...createDefaultConfig(),
-    ...raw,
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    generalProfileId: GENERAL_PROFILE_ID,
-    selectedGlobalProfileId: null,
-    profiles: [general, ...migratedProfiles],
-    ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
-    theme: raw.theme ?? DEFAULT_THEME,
-  } as AppConfig);
 }
 
 function writeConfig(config: AppConfig): AppConfig {

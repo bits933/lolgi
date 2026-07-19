@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as LucideIcons from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AppWindow,
@@ -11,13 +12,19 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { APP_PROFILE_PRESETS, createAppProfileFromPreset } from '../../../../shared/defaultProfiles';
 import { createEmptySlots } from '../../../../shared/profileUtils';
-import type { ForegroundAppInfo, MutationResult, RingProfile, RingSlot } from '../../../../shared/types';
+import type { ForegroundAppInfo, MutationResult, RingProfile, RingSlot, SupportedAppId } from '../../../../shared/types';
 import type { InstalledAppInfo } from '../../env.d';
 import styles from './NewProfileModal.module.css';
 
 type ApplicationTab = 'detect' | 'running' | 'installed' | 'manual';
 type StartingLayout = 'blank' | 'general';
+type AnyIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>;
+
+function resolveIcon(name: string): AnyIcon {
+  return (LucideIcons as unknown as Record<string, AnyIcon>)[name] ?? AppWindow;
+}
 
 interface SelectedApplication {
   processName: string;
@@ -206,6 +213,22 @@ export function NewProfileModal({
     if (result.status !== 'ok') setError(result.message ?? 'The profile could not be created.');
   };
 
+  const handlePresetCreate = async (presetId: SupportedAppId) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const sortOrder = Math.max(0, ...profiles.map((profileItem) => profileItem.sortOrder)) + 1;
+      const result = await onCreate(createAppProfileFromPreset(presetId, sortOrder));
+      if (result.status !== 'ok') {
+        setError(result.message ?? 'The app profile could not be created.');
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className={styles.overlay} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onCancel()}>
       <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-profile-title">
@@ -218,19 +241,54 @@ export function NewProfileModal({
         </header>
 
         {!kind ? (
-          <div className={styles.kindGrid}>
-            <button type="button" onClick={() => setKind('global')}>
-              <span className={styles.kindIcon}><Globe2 size={25} /></span>
-              <strong>Global profile</strong>
-              <p>Choose it manually and use it across all applications.</p>
-              <small>Independent of the foreground app</small>
-            </button>
-            <button type="button" onClick={() => setKind('application')}>
-              <span className={styles.kindIcon}><AppWindow size={25} /></span>
-              <strong>Application profile</strong>
-              <p>Activate this ring automatically for one Windows application.</p>
-              <small>Matched by normalized process name</small>
-            </button>
+          <div className={styles.landing}>
+            <section className={styles.presetSection}>
+              <div className={styles.presetHeading}>
+                <div>
+                  <span>Suggested profiles</span>
+                  <h3>Start with a researched app ring</h3>
+                </div>
+                <small>8 editable bubbles each</small>
+              </div>
+              <div className={styles.presetGrid}>
+                {APP_PROFILE_PRESETS.map((preset) => {
+                  const Icon = resolveIcon(preset.iconName);
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void handlePresetCreate(preset.id)}
+                    >
+                      <span className={styles.presetIcon}><Icon size={20} strokeWidth={1.8} /></span>
+                      <span className={styles.presetCopy}>
+                        <strong>{preset.displayName}</strong>
+                        <small>{preset.description}</small>
+                      </span>
+                      <span className={styles.presetProcess}>
+                        <span>{preset.processName}.exe</span>
+                        <span>Researched {preset.researchedAt}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+            <div className={styles.startDivider}><span>or build your own</span></div>
+            <div className={styles.kindGrid}>
+              <button type="button" onClick={() => setKind('global')}>
+                <span className={styles.kindIcon}><Globe2 size={25} /></span>
+                <strong>Global profile</strong>
+                <p>Choose it manually and use it across all applications.</p>
+                <small>Independent of the foreground app</small>
+              </button>
+              <button type="button" onClick={() => setKind('application')}>
+                <span className={styles.kindIcon}><AppWindow size={25} /></span>
+                <strong>Application profile</strong>
+                <p>Activate this ring automatically for one Windows application.</p>
+                <small>Matched by normalized process name</small>
+              </button>
+            </div>
           </div>
         ) : (
           <div className={styles.content}>
@@ -319,7 +377,7 @@ export function NewProfileModal({
           </div>
         )}
 
-        {error && <div className={styles.error}>{error}</div>}
+        {error && <div className={styles.error} role="alert" aria-live="assertive">{error}</div>}
         {kind && (
           <footer className={styles.footer}>
             <button type="button" className={styles.cancelButton} onClick={onCancel}>Cancel</button>

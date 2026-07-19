@@ -1,0 +1,516 @@
+Action Ring
+Product Requirements Document — a customizable radial quick-action overlay,
+feature-complete clone of the Logitech Actions Ring (plus fixes for its known
+weaknesses)
+Document
+status
+Draft v1.0
+Date July 14, 2026
+Author Joshua (product owner) · research & drafting by Claude
+Target
+platform
+Windows 10/11 first; macOS 13+ second; Linux stretch goal
+Research
+basis
+3 parallel research reports: official Logitech documentation & release notes, ~25 press reviews,
+community threads (Reddit, forums, Hacker News) and 12+ competitor tools. Full reports in
+research/.
+1. Executive Summary
+The Logitech Actions Ring (shipped in Logi Options+ v1.83, Oct 14 2024; extended to all MX devices Aug
+2025 and to all compatible Logitech devices June 2026) is an on-screen radial overlay of eight customizable
+"bubbles" that appears around the mouse cursor when a trigger button is pressed. Each bubble executes an
+action — a keystroke, macro, app launch, media control, device switch, plugin command, or an analog
+"adjustment" driven by the scroll wheel — and the ring is contextual: it swaps its contents based on the
+foreground application. Reviewers call it "the best productivity mouse feature I've ever used" (MakeUseOf)
+and "a reason to buy the MX Master 4" by itself (AppleInsider). Logitech claims up to 33% time savings and
+63% fewer repetitive mouse movements (Ergo Lab study, 2025, n=37).
+This PRD specifies Action Ring, an independent application that replicates every documented feature of
+Logitech's implementation without requiring Logitech hardware or an internet connection, and fixes the
+seventeen most-requested community complaints (cold-start latency, no disable toggle, 8-slot cap, no offline
+mode, no multi-keystroke sequences, etc.). The document ends with a phased work breakdown (§12) suitable
+for import into a task tracker.
+2. Background & Feature Timeline (as shipped by Logitech)
+Date Options+
+ver.
+Milestone
+Apr 17, 2024— Logi AI Prompt Builder launches (ChatGPT pop-up window, "recipes": Rephrase / Summarize /
+Reply / Create Email + custom). Not yet a ring, but later reachable from it via Smart Actions.
+Sep 24 / Oct
+14, 2024
+1.83 Actions Ring debuts, exclusive to the MX Creative Console (trigger: Dialpad bottom-right
+button), alongside the Logi Marketplace plugin store.
+Apr 21, 20251.89 "Open Folder" action; improved Adapt-to-App profile activation.
+Jun 9, 2025 1.91 Folders (sub-groups of 9 sub-bubbles per bubble → up to 72 actions); improved Switch
+Profile action.
+Aug 8, 20251.93 Extended to all MX mice and keyboards; Easy-Switch available inside the ring.
+Sep–Oct
+2025
+1.95 MX Master 4 ships with a dedicated haptic thumb-panel trigger; hover/select haptic bumps;
+ring opacity improved; Easy-Switch ×1/×2/×3 actions.
+Dec 3, 20251.98 Plugin-service-off warning on trigger; per-action adjustment sensitivity; icon editor upgrades.
+Feb 9, 20261.99 MX Ergo support.
+Mar–Jun
+2026
+2.1–2.4 Profile import; Mac wake responsiveness fix; SVG icon compatibility popup; extended to all
+compatible Logitech devices; ring display sizes Small / Medium / Large.
+3. Goals and Non-Goals
+Goals
+1. Ship a radial overlay functionally equivalent to Logitech's Actions Ring: 8 bubbles, folders, adjustment
+bars, contextual per-app profiles, drag-and-drop configuration, plugin actions.
+2. Work with any mouse/keyboard (mappable trigger: any mouse button, keyboard hotkey, or gesture) —
+no hardware lock-in.
+3. Be offline-first: zero internet requirement for any core feature; local JSON config; optional cloud sync
+only as opt-in.
+4. Beat Logitech on the community's top complaints: instant invocation (<100 ms always, including first use
+after wake), a real enable/disable toggle + game mode, configurable slot count, multi-keystroke
+sequences, and light resource usage (<50 MB RAM idle, <0.1% CPU).
+Non-Goals (v1)
+1. Hardware haptic feedback (requires device firmware; consider Windows 11 Advanced Haptics API as a v2
+stretch).
+2. Cloud marketplace with paid content; v1 ships a curated local plugin/preset gallery instead.
+3. ChatGPT-account-integrated AI Prompt Builder clone; v1 exposes "AI launcher" and "prompt-to-URL"
+actions only.
+4. Mobile/iPadOS support.
+4. Users & Key Use Cases (from observed real-world setups)
+Persona Observed usage (sourced from community research)
+Office / Excel power user Top-level Copy, Paste, Clipboard history, Screenshot; Excel folder (Create Table, Create Pivot,
+monthly-report macro opening 5 URLs + a workbook); window-management folder; company-
+app folder.
+Creative pro (Photoshop
+/ Premiere / Resolve)
+Per-app rings: brush size ±, undo/redo history scrubbing via dial, Remove/Paste attributes,
+Nest, razor, workspace switching, export presets; adjustment sliders for
+brightness/contrast/exposure.
+CAD drafter Ring as app/file launcher (taskbar hidden); "keystroke-then-Enter" commands (AutoCAD
+R,O,Enter).
+Developer / multi-PC
+user
+Device/desktop switching, terminal commands via Run, AI chat launcher, scripts
+(AppleScript/PowerShell) on bubbles.
+Meetings user Teams/Zoom ring: mute mic, share screen, chat, reactions, camera toggle.
+5. Competitive Landscape
+Product Platform Strengths Weaknesses our product exploits
+Logitech
+Actions Ring
+(reference)
+Win
+10+/macOS
+13+
+Polished drag-drop GUI; contextual
+plugins auto-creating app profiles;
+analog adjustment bars; macro (Smart
+Actions) integration; signed corporate-
+installable software; hardware trigger +
+haptics on MX Master 4
+Requires Logitech hardware + internet +
+account; cold-start delay of 10–20 s after
+wake; fragile LogiPluginService (works-
+once-then-dies bugs); hard 8-slot / 1-level-
+folder cap; no disable toggle or game
+mode; heavy background processes;
+telemetry concerns
+Kando (OSS) Win/mac/LinuxUnlimited nesting; marking-menu
+gesture selection; themes; offline; free
+Electron footprint; no analog adjustment
+bars; no plugin marketplace; config heavy
+Radial
+(AppVerge)
+macOS Sub-menus, visual macro editor, shell
+scripts, Apple Shortcuts, preset
+marketplace
+Mac-only, paid
+Pie Menu /
+Pieoneer /
+Cirmenu
+macOS Menu-bar harvesting (Pie Menu); polish
+(Pieoneer)
+Narrow action types; Mac-only
+AutoHotPie /
+AHK Radial /
+GestureSign
+Windows Free, fully scriptable AHK runtime often banned in corporate
+environments; no polished GUI
+Elgato Virtual
+Stream Deck
+Win/mac More slots/layouts, Shortcuts/Keyboard
+Maestro macros
+Requires Stream Deck hardware; grid not
+radial
+Positioning: "The Logitech Actions Ring for every mouse — instant, offline, and unlimited." Combine Logitech's
+polish + analog adjustments + contextual plugins with Kando's openness, depth and offline-first stance.
+6. Detailed Feature Specification
+Priorities: P0  = MVP, must ship first release; P1  = v1.x fast-follow; P2  = v2 / stretch. Requirements
+marked [Δ] intentionally exceed Logitech's implementation to answer a documented community complaint.
+F1 — Ring Overlay (core surface)
+F1.1 P0  On trigger, render a radial overlay of round action "bubbles" centered on the current cursor
+position, on any monitor, above all windows (topmost, click-through-exempt). Bubbles are spaced
+equidistantly around the cursor.
+F1.2 P0  Default bubble count is 8. [Δ] Count is configurable per profile from 2–12 (Logitech hard-caps at
+8; "more slots" is community request #4).
+F1.3 P0  Each bubble shows an icon and, on hover, a text label. Hovered bubble visibly highlights (scale +
+accent color).
+F1.4 P0  The ring stays open until the user selects an action, presses the trigger again, presses Esc, or
+clicks outside the ring. Selecting fires the action and closes the ring (folders excepted, F4).
+F1.5 P0  Two activation gestures, matching Logitech's: (a) click-release — tap trigger, ring opens and
+persists, click a bubble; (b) press-hold-release — hold trigger, move to bubble, release to fire. Both work
+without configuration.
+F1.6 P1  [Δ] Marking-menu quick select (Kando-style): with gesture (b), a fast directional flick selects the
+bubble in that direction even before the overlay finishes rendering — expert users never wait for the UI.
+F1.7 P0  Three ring sizes — Small / Medium (default) / Large — set globally in Settings (parity with
+Options+ v2.4). P1  plus a continuous scale slider (75–150%).
+F1.8 P0  Overlay opacity configurable (Logitech tuned opacity for readability in v1.95; ProVideo Coalition
+asked for a contrast setting). Default ≥ 95% with a high-contrast theme option.
+F1.9 P1  Open/close animation (~120 ms scale/fade), disableable ("reduce motion" respects OS accessibility
+setting).
+F1.10 P0  Multi-monitor and per-monitor DPI aware; ring must render fully on-screen (clamp position
+when triggered near screen edges — cursor-relative but never clipped).
+F1.11 P1  Behavior over fullscreen/exclusive apps is explicit: detect exclusive-fullscreen and either suppress
+the ring (default, prevents game disruption) or render borderless-topmost, per-profile setting. (Logitech's
+ring silently fails over fullscreen apps — community bug §5.)
+F1.12 P2  Theming: user-selectable themes (light/dark/auto + accent), custom theme files (colors, bubble
+shape, fonts) à la Kando.
+F2 — Trigger System
+F2.1 P0  Trigger sources: (a) any mouse button (including side/extra buttons XBUTTON1/2, middle click) via
+low-level mouse hook; (b) any keyboard hotkey/combination; (c) P1  mouse gesture (e.g. hold right button
++ flick) and double-modifier taps.
+F2.2 P0  "Show Action Ring" is a mappable action; multiple simultaneous triggers allowed (e.g. mouse
+button AND hotkey).
+F2.3 P0  When a mouse button is consumed as the trigger, its original event must be swallowed (no click
+leaks to the app underneath), and un-mapping must fully restore default behavior.
+F2.4 P0  [Δ] True disable: a first-class global toggle (tray menu + hotkey + a "Toggle Action Ring"
+assignable action) that fully disarms all triggers. Logitech's only mechanism is remapping to "Do nothing",
+which still pops an empty ring for some users — community request #1.
+F2.5 P1  [Δ] Game mode: auto-disable when a process on a user-managed blocklist (or any exclusive-
+fullscreen app) is foreground; tray icon reflects the armed/disarmed state — community request #2.
+F2.6 P1  Debounce/sensitivity: configurable minimum hold time (0–500 ms) before the ring opens, to
+suppress accidental triggers (the MX Master 4's #1 hardware complaint; we solve it in software).
+F3 — Actions (assignable to any bubble)
+F3.1 P0  Keystroke: send any single shortcut (modifiers + key), recorded via a key-capture field. Must
+support media keys and OS keys.
+F3.2 P0  [Δ] Keystroke sequence: ordered multi-chord sequences in one action (e.g. Excel Alt+A, then C;
+AutoCAD R, O, Enter) with per-step delay. Logitech cannot do this in one action — community request
+#6.
+F3.3 P0  Open application (launch or focus-if-running — "switch to" semantics like AppleInsider's
+OmniFocus example).
+F3.4 P0  Open folder / file / URL. Folder-open must be instant for network paths (spawn explorer.exe
+<path> asynchronously — Logitech's implementation blocks up to 20 s on network drives, community bug
+§5).
+F3.5 P0  Run command: arbitrary command line with arguments; optional "run hidden" and "run as
+admin" flags; P1  inline script actions (PowerShell/AppleScript/bash) with the script stored in the profile.
+F3.6 P0  System actions (parity list from Options+): copy, paste, undo, redo, cut; screenshot
+(region/window/full); volume up/down/mute; media play-pause/next/previous; brightness ±; lock
+workstation; sleep displays; show desktop; window snap left/right/maximize/minimize; new note; emoji
+picker; clipboard-history picker; app switcher; virtual-desktop next/previous; zoom in/out; search (OS
+search).
+F3.7 P0  Multi-Action (macro): ordered list of any other actions with configurable inter-step delays and
+"type text" steps (parity with Smart Actions' core: "open multiple apps or websites with a single click… add a
+delay in between each action"). P1  conditions (if app running / if window title matches) and [Δ] a cancel
+mechanism (Esc aborts a running macro — community request #13).
+F3.8 P1  Text snippet: paste a stored text block (Radial-style; not in Logitech's ring).
+F3.9 P1  AI launcher: open a chosen AI chat (ChatGPT / Gemini / Perplexity / Copilot / custom URL),
+optionally passing the current selection or clipboard as URL-encoded prompt (parity with the "Explore AI"
+default bubble; superset via prompt passing).
+F3.10 P1  Switch profile action (jump to a named profile or back to General — parity with v1.91) and Do
+nothing placeholder action.
+F3.11 P2  Device switch (Easy-Switch equivalent): where device SDKs allow (e.g. Logitech devices via logi
+HID++, or generic Bluetooth profile switching), expose a channel-switch action; otherwise omit gracefully.
+F3.12 P2  [Δ] Dynamic bubbles: bubble types whose contents are computed at open time — "open
+windows" ring (Alt-Tab-style, community request #7), "recent files", "clipboard history top 8".
+F4 — Folders (nesting)
+F4.1 P0  Any bubble can be a Folder containing up to 9 sub-bubbles (parity: 8 × 9 = 72 actions). Clicking a
+folder expands its sub-bubbles in place (ring morphs; back affordance returns to the top level).
+F4.2 P1  [Δ] Nesting depth is configurable up to 3 levels (Logitech allows exactly 1; Kando proves deeper
+nesting works).
+F4.3 P0  [Δ] Actions can be removed from folders, reordered, and moved between folders/top level in the
+editor (Logitech cannot delete-from-folder — community request #9).
+F4.4 P0  Folders have their own name and icon, both editable.
+F5 — Adjustment Bar (analog actions)
+F5.1 P0  An adjustment action binds a continuous parameter (volume, brightness, zoom, scroll, or a
+plugin parameter such as brush size / exposure) to relative input. While hovering the bubble, the scroll
+wheel adjusts the value.
+F5.2 P0  Click-and-drag on an adjustment bubble reveals a horizontal adjustment bar; dragging right/left
+changes the value continuously (full parity with Logitech's drag behavior).
+F5.3 P0  [Δ] The current numeric value is displayed during adjustment (e.g. "68%") — Logitech shows
+none; community request #8.
+F5.4 P1  Per-action adjustment sensitivity setting (parity with v1.98) and optional snap/step values.
+F5.5 P1  Generic "keystroke pair" adjustment: map wheel-up/wheel-down while hovering to two shortcuts
+(e.g. [ / ] for brush size) so any app gains analog control without a plugin.
+F6 — Contextual Per-App Profiles
+F6.1 P0  The ring detects the foreground application at trigger time and shows that app's profile if one
+exists, else the General profile. Detection by process name; P1  also window-title regex (for browser-based
+apps) and URL matching via browser extensions P2 .
+F6.2 P0  Unlimited named profiles; each holds its own ring layout (bubbles, folders, count). Profiles listed as
+tabs in the editor (parity with Options+ layout).
+F6.3 P0  Create a profile from: blank, duplicate of General, or a bundled preset (see F8). "Add application"
+flow lists running apps + installed apps + browse-to-exe.
+F6.4 P1  Profile import/export as a single shareable file (parity with v2.1 import; superset: export too,
+enabling community sharing without a marketplace).
+F6.5 P1  Per-profile overrides: bubble count, ring size, fullscreen behavior, trigger hold-time.
+F7 — Configuration & Editor UI
+F7.1 P0  A settings/editor app with a live ring preview: drag-and-drop actions from a searchable,
+categorized picker (System / Apps / Macros / Plugins) onto bubbles; drag between bubbles to reorder; drag
+off to remove.
+F7.2 P0  Per-bubble settings: rename, choose icon, configure action parameters.
+F7.3 P0  Icon system: bundled icon set (≥ 300 glyphs, e.g. Lucide/Font Awesome Free); auto-extracted app
+icons from the target exe; user-supplied PNG/SVG with validation and a clear error message (Logitech
+added an SVG-compat popup in v2.3); P1  icon editor (background color, glyph color, text label, size) and
+installable icon packs.
+F7.4 P1  Undo/redo in the editor; changes apply live (next ring open uses the new layout, no restart).
+F7.5 P0  First-run onboarding: 3-step tour (pick trigger → try the ring → open editor), and a default General
+profile that demonstrates value immediately (parity with Logitech's defaults: play/pause, screenshot,
+clipboard history, emoji, lock, file manager, AI launcher, settings).
+F7.6 P1  Settings search; keyboard-navigable editor; system tray icon with quick actions (enable/disable,
+open editor, switch profile, quit).
+F8 — Plugins & Presets (app integrations)
+F8.1 P0  Ship bundled preset profiles for: Chrome/Edge/Firefox, Excel, Word, PowerPoint, Photoshop,
+Premiere Pro, Lightroom Classic, DaVinci Resolve, Figma (web+app), VS Code, Teams, Zoom, Slack, Spotify,
+File Explorer/Finder — built from documented shortcut sets, no host-app SDK needed. (Firefox preset is
+itself a fix: Logitech covers Chrome only.)
+F8.2 P1  Plugin SDK v1 (declarative): a plugin = JSON manifest + icon assets defining actions
+(keystrokes/sequences/commands/adjustment pairs) and the app-match rule; installing a plugin auto-
+creates its contextual profile (parity with Logi Marketplace behavior).
+F8.3 P2  Plugin SDK v2 (programmatic): local IPC (named pipe / WebSocket) so a plugin process can
+expose live actions and receive adjustment deltas (needed for true Photoshop-style parameter control à la
+Loupedeck). Sandboxed, permission-prompted.
+F8.4 P2  In-app gallery browsing a static, signed index (GitHub-hosted) of community presets/plugins/icon
+packs — works read-only, degrades gracefully offline. No account required, ever.
+F9 — Storage, Sync & Offline Behavior
+F9.1 P0  All configuration is local, human-readable JSON under the user profile dir, written atomically;
+corrupted files are backed up and regenerated, never silently reset.
+F9.2 P0  100% offline operation of every core feature (ring, actions, editor, presets). This is the #3
+community request and Logitech's single biggest flashpoint (their official statement: ring + Smart Actions
+"require an active internet connection").
+F9.3 P1  Automatic local config backups (last 10 versions) + one-click full backup/restore file.
+F9.4 P2  Optional folder-based sync (point the config at Dropbox/OneDrive/Syncthing) — no proprietary
+cloud.
+F10 — Performance & Reliability (product-defining, not an afterthought)
+F10.1 P0  Trigger-to-visible-ring latency < 100 ms p99, including the first invocation after boot/sleep
+(Logitech's 10–20 s cold start is the #1 community complaint; the overlay process must stay warm and pre-
+rendered).
+F10.2 P0  Idle footprint: ≤ 50 MB RAM, ≤ 0.1% CPU, zero network. Single background process (no separate
+updater/agent/broker trio — Options+ runs 3+ processes and is a documented battery drain).
+F10.3 P0  Action execution starts ≤ 50 ms after bubble selection; actions fired from the ring must be as fast
+as a direct button binding (a measured Logitech regression).
+F10.4 P0  Watchdog & crash recovery: if the overlay process dies, it restarts silently ≤ 2 s; hooks re-register
+after resume-from-sleep and after Explorer restarts. No "works once then dies until reboot" states
+(documented Options+ v2.4 bug).
+F10.5 P1  Diagnostics page: hook status, last-trigger latency, per-action success log; "restart engine" button
+that actually works (Options+'s restart hangs in a loop for many users).
+F10.6 P1  Known-conflict handling: detect focus-follows-mouse tools/password-manager overlays that
+inject ghost clicks (documented AutoRaise conflict) and warn with guidance rather than glitching.
+F11 — Privacy, Security & Distribution
+F11.1 P0  No telemetry by default; optional anonymous usage stats strictly opt-in with a visible data list.
+No ads, no account, no bundled software (each of these is a documented Options+ grievance).
+F11.2 P0  Signed installer (MSI/MSIX + notarized DMG later); silent-install flags for corporate deployment;
+no admin needed to run.
+F11.3 P1  Minimal OS permissions, each requested lazily with an explanation (macOS: Accessibility only;
+never Screen Recording unless the screenshot action is used — Options+'s "crazy" permission sprawl is a
+documented IT blocker).
+F11.4 P1  Updates: manual check by default, optional auto-update; the updater must not run persistently.
+F12 — Accessibility & Localization
+F12.1 P1  Full keyboard operation of the ring (arrow keys/numbers select bubbles, Enter fires, Esc closes);
+screen-reader labels on bubbles; respects OS reduce-motion and high-contrast modes.
+F12.2 P2  Localization framework + top-10 languages; correct shortcut handling across keyboard layouts
+(Logitech had to patch non-US layouts for its plugins).
+7. Out-of-scope Reference: Logitech Features Intentionally Dropped
+Hardware haptics (hover/select bumps, 4 intensity levels) — device-firmware dependent; revisit with
+Windows 11 Advanced Haptics (P2 research task T9.4).
+AI Prompt Builder full clone (ChatGPT window with Rephrase/Summarize/Reply/Create Email recipes,
+tone/length dropdowns) — replaced by the simpler F3.9 AI launcher; a recipes-style prompt palette is a
+possible v3.
+Logi Flow-style multi-computer control — separate product territory.
+Onboard device memory — impossible without our own hardware; our answer is instant-start local
+software.
+8. Non-Functional Requirements Summary
+Attribute Requirement
+Latency Trigger→ring < 100 ms p99 (incl. cold start); selection→action < 50 ms
+Footprint ≤ 50 MB RAM idle; ≤ 0.1% CPU idle; installer ≤ 40 MB (vs Options+ offline 750 MB)
+Reliability Crash-free sessions ≥ 99.5%; auto-recovery ≤ 2 s; survives sleep/wake, monitor changes, DPI changes
+CompatibilityWindows 10 21H2+ / Windows 11 (x64 + ARM64 — Logitech shipped an ARM rendering bug; we test it);
+macOS 13+ (phase 2)
+Privacy Zero network calls unless gallery/update explicitly invoked; opt-in telemetry only
+Input safety Hooks never add measurable pointer latency (< 1 ms processing per event); clean unhook on exit
+9. Success Metrics
+Activation: ≥ 60% of installers trigger the ring ≥ 10 times in week 1 (onboarding quality).
+Retention: ≥ 40% of week-1 actives still use the ring daily at day 30.
+Depth: median ≥ 2 customized bubbles and ≥ 1 app profile per retained user by day 30.
+Performance honesty: p99 cold-start invocation < 100 ms measured in the field (diagnostics opt-in), not
+lab-only.
+Quality: < 1% of sessions with a failed trigger (ring didn't appear) — the exact failure mode that
+dominates Logitech complaint threads.
+10. Risks & Open Questions
+# Risk / question Mitigation / decision needed
+R1 Low-level mouse hooks are flagged by some
+anti-cheat systems
+Game mode (F2.5) disarms hooks per-process; document clearly
+R2 Framework choice: native (Win32/WinUI, ~10
+MB, fastest) vs Electron/Tauri (faster UI dev,
+heavier)
+Recommend: Tauri or native shell for the overlay + web-tech
+editor; overlay latency budget rules out Electron for the ring itself.
+Decide in T0.2
+R3 Swallowing a mouse button globally can break
+edge cases (drag operations, RDP, virtualization)
+Extensive input-matrix testing (T1.6); passthrough allowlist
+R4 Trademark: "Actions Ring" is Logitech's
+marketing name
+Ship under a distinct name/brand; "Action Ring" as working title
+only — legal review before launch
+R5 Preset shortcut sets rot as host apps update
+(documented Logitech pain)
+Presets are data-only JSON → hot-fixable via gallery; community
+PRs
+R6 macOS Accessibility-permission frictionPhase 2; polished permission onboarding, single permission only
+Q1 Monetization (free/OSS core + paid pro? one-
+time license?)
+Open — does not block v1 build
+Q2 Do we pursue Logitech-device deep integration
+(HID++ for Easy-Switch/haptics)?
+Defer to P2 (F3.11); investigate legality/SDK access
+11. Release Plan
+Release Scope Exit criteria
+M0 — Spike (wk
+1–2)
+Tech decisions + overlay/hook proofs of concept <100 ms overlay POC on
+Win10/11 incl. ARM64
+M1 — MVP (wk
+3–8)
+F1 core, F2.1–2.4, F3.1–3.7, F4.1/4.3/4.4, F6.1–6.3, F7 basic editor,
+F9.1–9.2, F10 targets
+Daily-drivable; all P0s demoable;
+perf budgets green
+M2 — v1.0 public
+(wk 9–14)
+F5 adjustments, F7 full editor + onboarding + icons, F8.1 presets,
+F2.5–2.6, installer/signing, diagnostics
+All P0 complete, crash-free ≥
+99.5% in beta
+M3 — v1.x (wk
+15–22)
+P1 set: marking menus, deeper nesting, profile import/export,
+plugin SDK v1, snippets, AI launcher, accessibility
+P1 complete; community preset
+sharing live
+M4 — v2 (later) macOS port, plugin SDK v2, dynamic bubbles, gallery, themes,
+haptics research
+—
+12. Work Breakdown — Tasks
+Effort: S ≤ 1 dev-day · M ≤ 3 · L ≤ 7 · XL > 7. Dependencies reference task IDs.
+Phase 0 — Foundations & spikes (M0)
+ID Task Effort Deps
+T0.1 Write engineering design doc: process model (background engine + overlay + editor), config
+schema v1, IPC choice
+M —
+T0.2 Framework spike: measure overlay show-latency for native Win32/D2D vs Tauri vs Electron; pick
+stack (decides R2)
+M —
+T0.3 Low-level input POC: global mouse+keyboard hooks (WH_MOUSE_LL / WH_KEYBOARD_LL or Raw
+Input), swallow XBUTTON events, re-inject when unarmed
+M —
+T0.4 Input injection POC: SendInput for chords, sequences, unicode text; verify against elevated windows
+(UIPI limits documented)
+S —
+T0.5 Foreground-app detection POC: process name + window title on trigger, incl. UWP apps; measure
+cost
+S —
+T0.6 CI setup: build, unit tests, signed nightly artifact; ARM64 build target from day oneM T0.2
+Phase 1 — MVP ring engine (M1)
+ID Task Effort Deps
+T1.1 Background engine service: startup, tray icon, config load/watch, atomic JSON persistence (F9.1)L T0.1
+T1.2 Trigger system: mouse-button + hotkey triggers, arm/disarm, global toggle, event swallowing
+(F2.1–2.4)
+L T0.3,
+T1.1
+T1.3 Overlay renderer: pre-warmed topmost window, 8-bubble radial layout at cursor, hover
+highlight, labels, sizes S/M/L, DPI/multi-monitor clamping (F1.1–1.5, 1.7, 1.10)
+XL T0.2
+T1.4 Both activation gestures: click-release and press-hold-release selection (F1.5)M T1.2,
+T1.3
+T1.5 Action framework + executors: keystroke, keystroke sequence, open app/folder/file/URL, run
+command, do-nothing (F3.1–3.5, 3.10)
+L T0.4,
+T1.1
+T1.6 Input-safety test matrix: drag ops, RDP, VMs, elevated apps, games, multiple mice; fix leaks (R3)M T1.2
+T1.7 System actions pack: clipboard, media, volume, screenshot, window management, lock, emoji,
+clipboard history (F3.6)
+L T1.5
+T1.8 Multi-Action macro engine with delays + type-text steps (F3.7) M T1.5
+T1.9 Folders: data model, in-ring expansion, back navigation (F4.1, 4.4) M T1.3
+T1.10 Contextual profiles: General + per-app by process name, profile resolution at trigger time (F6.1–
+6.3)
+M T0.5,
+T1.1
+T1.11 Minimal editor v0: profile list, bubble grid, action picker (list-based), rename/icon-from-exe
+(F7.1–7.2 subset)
+L T1.1
+T1.12 Performance harness: automated trigger→pixel latency measurement; cold-start test after
+simulated sleep; RAM/CPU budget gate in CI (F10.1–10.3)
+M T1.3
+T1.13 Watchdog + resume-from-sleep hook re-registration + crash recovery (F10.4)M T1.1
+Phase 2 — v1.0 polish (M2)
+ID Task Effort Deps
+T2.1 Adjustment actions: scroll-wheel-on-hover, click-drag adjustment bar, live numeric value
+display, volume/brightness/zoom built-ins (F5.1–5.3)
+L T1.3,
+T1.7
+T2.2 Full editor: drag-and-drop from categorized searchable picker, drag-reorder/remove, folder
+editing incl. remove-from-folder (F7.1, F4.3)
+XL T1.11
+T2.3 Icon system: bundled glyph set, exe icon extraction, PNG/SVG import with validation (F7.3)M T2.2
+T2.4 Onboarding flow + default General profile (F7.5) M T2.2
+T2.5 Game mode + fullscreen detection + per-profile fullscreen policy + trigger hold-time debounce
+(F2.5–2.6, F1.11)
+M T1.2,
+T1.10
+T2.6 Bundled presets: author + verify 15 app preset profiles (F8.1) L T1.10
+T2.7 Opacity/high-contrast setting, open/close animation with reduce-motion (F1.8–1.9)S T1.3
+T2.8 Diagnostics page: hook status, latency stats, action log, engine restart (F10.5)M T1.13
+T2.9 Signed installer (MSI/MSIX), silent-install flags, autostart registration, clean uninstall (F11.2)M T0.6
+T2.10 Beta program: crash reporting (opt-in), feedback channel, fix cycle to ≥ 99.5% crash-freeL all P0
+T2.11 ARM64 validation pass (Logitech's black-rectangle bug class) + Win10 21H2 compatibility passS T2.10
+Phase 3 — v1.x differentiators (M3)
+ID Task Effort Deps
+T3.1 Marking-menu flick selection (F1.6) M T1.4
+T3.2 Configurable bubble count 2–12 + per-profile overrides (F1.2, F6.5) M T2.2
+T3.3 Nesting to 3 levels (F4.2) M T1.9
+T3.4 Profile import/export file format + UI (F6.4) M T2.2
+T3.5 Plugin SDK v1: manifest schema, loader, auto-profile creation, docs + 2 sample plugins (F8.2)L T2.6
+T3.6 Text snippets, AI launcher with selection/clipboard prompt passing, switch-profile action (F3.8–
+3.10)
+M T1.5
+T3.7 Macro conditions + Esc-cancels-macro (F3.7 ext) M T1.8
+T3.8 Keystroke-pair generic adjustments + per-action sensitivity (F5.4–5.5) M T2.1
+T3.9 Accessibility: keyboard ring navigation, screen-reader labels, high-contrast audit (F12.1)M T2.7
+T3.10 Local config backups + restore (F9.3); conflict-tool detection warnings (F10.6)S T1.1
+T3.11 Window-title/regex app matching (F6.1 ext) S T1.10
+Phase 4 — v2 and beyond (M4)
+ID Task Effort Deps
+T4.1 macOS port: NSEvent taps, Accessibility onboarding, notarized DMG (single permission, F11.3)XL M2
+T4.2 Plugin SDK v2: IPC protocol, sandboxing, permission prompts; Photoshop/OBS reference plugins
+(F8.3)
+XL T3.5
+T4.3 Dynamic bubbles: open-windows ring, recent files, clipboard top-8 (F3.12) L T3.2
+T4.4 Community gallery: signed static index, in-app browse/install of presets/plugins/icon packs
+(F8.4)
+L T3.4,
+T3.5
+T4.5 Theme engine + theme file format (F1.12) M T2.7
+T4.6 Folder-based sync support + docs (F9.4) S T3.10
+T4.7 Research: Windows 11 Advanced Haptics for compatible mice; HID++ Easy-Switch feasibility
+(F3.11, Q2)
+M —
+T4.8 Localization framework + top-10 languages; layout-aware shortcut handling (F12.2)L T3.9
+13. Appendix — Source Index
+Full cited research (every fact with URL) lives in research/01-official-logitech-sources.md, research/02-press-
+and-reviews.md, research/03-community-and-alternatives.md. Primary hubs:
+Official: support.logi.com article 17844647906967 (Actions Ring FAQ); Options+ Release Notes (article 1500005516462);
+logitech.com/software/actions-ring; news.logitech.com press releases (MX Creative Console 2024, MX Master 4 2025,
+Signature Comfort Plus 2026); marketplace.logi.com; official YouTube tutorials (8 videos).
+Press: TechRadar, AppleInsider, MacStories, Macworld, Engadget, MakeUseOf, XDA, Forbes, ProVideo Coalition, Tom's
+Hardware, Pocket-lint, Windows Central, PCWorld, The Verge, How-To Geek, Thurrott, iMore, TrustedReviews, Galaxus,
+RTINGS, futurework.blog, dataholic.de.
+Community: r/logitech threads (1op07at, 1qp74ri, 1muj00z, 1nkqg4w, 1otoj7o, 1ougex2, 1nvl6sp, 1od4nn1, 1sjpu5c,
+1ppkk0m, 1ogguwd, 1oxt5pu, 1plhned, 1nu64c3, 1nugle4, 1ffxjl7, 174mq8u), r/macapps 1j3vd7e, AutoHotkey forum
+t=139245, folivora.ai community, audiosex.pro, Hacker News item 47369819, hub.sync.logitech.com offline manual.
+Competitors: kando.menu, radial.appverge.net, pie-menu.com, AutoHotPie, GestureSign, Elgato Virtual Stream Deck
+coverage.

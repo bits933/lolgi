@@ -1,103 +1,133 @@
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, dialog, Menu } from 'electron';
 import { createOverlayWindow, createDashboardWindow, showDashboard } from './windows';
 import { createTray } from './tray';
 import { registerHotkey, unregisterAll } from './globalShortcut';
 import { registerIpcHandlers } from './ipc';
 import { getConfig } from './store';
-import { startForegroundAppPolling, stopForegroundAppPolling } from './utils/foregroundApp';
+import { startForegroundAppWatcher, stopForegroundAppWatcher } from './utils/foregroundApp';
 import { healPersistedAppIcons } from './utils/iconHeal';
+import { formatRuntimeBuildIdentity, getRuntimeBuildIdentity } from './buildIdentity';
+import { flushDiagnostics, initializeDiagnostics } from './actions/diagnostics';
+import { shutdownTargetedInputBroker } from './actions/keyboard';
 
 // The app can outlive the console that launched it. Ignore only the expected
 // broken-pipe error so diagnostic logging cannot crash the main process.
 function handleConsoleStreamError(error: NodeJS.ErrnoException): void {
-  if (error.code !== 'EPIPE') {
-    throw error;
-  }
+  if (error.code !== 'EPIPE') throw error;
 }
 
 process.stdout.on('error', handleConsoleStreamError);
 process.stderr.on('error', handleConsoleStreamError);
 
-// Prevent garbage collection of windows
+// Prevent garbage collection of windows.
 let overlayWindow: BrowserWindow | null = null;
 let dashboardWindow: BrowserWindow | null = null;
 
-// Flag used by windows.ts to distinguish close vs quit
+// Flag used by windows.ts to distinguish close vs quit.
 let isQuitting = false;
 
 export function getIsQuitting(): boolean {
   return isQuitting;
 }
 
-// Ensure single instance
-const gotLock = app.requestSingleInstanceLock();
+const startupIdentity = getRuntimeBuildIdentity();
+const gotLock = app.requestSingleInstanceLock({
+  version: startupIdentity.version,
+  gitCommit: startupIdentity.gitCommit,
+  dirty: startupIdentity.dirty,
+  sourceFingerprint: startupIdentity.sourceFingerprint,
+  execPath: startupIdentity.execPath,
+  mode: startupIdentity.mode,
+});
+
 if (!gotLock) {
-  app.quit();
+  const message = [
+    'Another Logi Actions Ring instance is already running and owns the global hotkey.',
+    '',
+    `Attempted build: ${formatRuntimeBuildIdentity(startupIdentity)}`,
+    '',
+    'Open the existing dashboard from the system tray or quit it before launching this build.',
+  ].join('\n');
+  console.warn(`[main] ${message.replace(/\n/g, ' ')}`);
+  dialog.showErrorBox('Logi Actions Ring is already running', message);
+  app.exit(0);
+} else {
+  startPrimaryInstance();
 }
 
-app.on('second-instance', () => {
-  // If a second instance is opened, show the dashboard
-  const wins = BrowserWindow.getAllWindows();
-  const dashboard = wins.find((w) => w.webContents.getURL().includes('dashboard'));
-  if (dashboard) {
-    dashboard.show();
-    dashboard.focus();
-  }
-});
+function startPrimaryInstance(): void {
+  console.log(`[main] Logi Actions Ring starting | ${formatRuntimeBuildIdentity(startupIdentity)}`);
 
-app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null);
-  // 1. Register all IPC handlers before creating windows
-  registerIpcHandlers();
+  app.on('second-instance', (_event, _argv, _workingDirectory, additionalData) => {
+    const attempted = additionalData as Record<string, unknown>;
+    const attemptedVersion = typeof attempted.version === 'string' ? attempted.version : 'unknown';
+    const attemptedExecPath = typeof attempted.execPath === 'string' ? attempted.execPath : 'unknown';
+    console.warn(`[main] Blocked second instance v${attemptedVersion} from ${attemptedExecPath}`);
 
-  // 2. Pre-create and hide overlay window (fast first-trigger)
-  overlayWindow = createOverlayWindow();
-
-  // 3. Create dashboard window (hidden until user opens settings)
-  dashboardWindow = createDashboardWindow();
-
-  // 4. Create system tray icon
-  createTray();
-
-  // 5. Show dashboard on startup so it's immediately visible
-  showDashboard();
-
-  // 5. Register global hotkey
-  const config = getConfig();
-  if (config.ringEnabled) {
-    const success = registerHotkey(config.hotkey);
-    if (!success) {
-      console.warn(`[main] Failed to register hotkey: ${config.hotkey}`);
+    const wins = BrowserWindow.getAllWindows();
+    const dashboard = wins.find((window) => window.webContents.getURL().includes('dashboard'));
+    if (dashboard) {
+      dashboard.show();
+      dashboard.focus();
     }
-  }
+  });
 
-  // 6. Start foreground app polling for per-app profiles
-  startForegroundAppPolling(1000);
+  void app.whenReady()
+    .then(async () => {
+      Menu.setApplicationMenu(null);
+      await initializeDiagnostics(app.getPath('userData'), startupIdentity);
 
-  // 6b. Repair app icons persisted by the old extraction path (runs once,
-  // in the background — dashboard/overlay pick the fix up on next load).
-  void healPersistedAppIcons().catch((error) => console.error('[main] Icon heal failed:', error));
+      // Register IPC before creating renderer windows.
+      registerIpcHandlers();
 
-  // 7. Handle launch-at-startup
-  if (process.platform === 'win32') {
-    app.setLoginItemSettings({
-      openAtLogin: config.launchAtStartup,
-      path: process.execPath,
+      // Create every hidden application window first. Their HWNDs are registered
+      // by windows.ts so the foreground watcher can always distinguish self from
+      // the external application context.
+      overlayWindow = createOverlayWindow();
+      dashboardWindow = createDashboardWindow();
+
+      // Warm the foreground context before any app window is shown and before
+      // the global hotkey can be triggered.
+      await startForegroundAppWatcher();
+
+      createTray();
+      showDashboard();
+
+      const config = getConfig();
+      if (config.ringEnabled) {
+        const success = registerHotkey(config.hotkey);
+        if (!success) console.warn(`[main] Failed to register hotkey: ${config.hotkey}`);
+      }
+
+      // Repair icons persisted by the old extraction path in the background.
+      void healPersistedAppIcons().catch((error) => console.error('[main] Icon heal failed:', error));
+
+      if (process.platform === 'win32') {
+        app.setLoginItemSettings({
+          openAtLogin: config.launchAtStartup,
+          path: process.execPath,
+        });
+      }
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      console.error('[main] Startup failed:', message);
+      dialog.showErrorBox('Logi Actions Ring could not start', message);
+      app.quit();
     });
-  }
-});
 
-// Keep app running in tray when all windows are closed
-app.on('window-all-closed', () => {
-  // Intentional no-op: tray app stays alive
-});
+  // Keep the tray application alive when renderer windows are closed.
+  app.on('window-all-closed', () => {});
 
-app.on('before-quit', () => {
-  isQuitting = true;
-  unregisterAll();
-  stopForegroundAppPolling();
-});
+  app.on('before-quit', () => {
+    isQuitting = true;
+    unregisterAll();
+    stopForegroundAppWatcher();
+    shutdownTargetedInputBroker();
+    void flushDiagnostics();
+  });
 
-app.on('will-quit', () => {
-  unregisterAll();
-});
+  app.on('will-quit', () => {
+    unregisterAll();
+  });
+}

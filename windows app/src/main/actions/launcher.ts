@@ -250,9 +250,24 @@ export async function runCommand(payload: string, overrides: Partial<CommandPayl
     );
     return;
   }
-  await execAsync(commandLine, {
-    cwd: config.workingDirectory || undefined,
-    windowsHide: config.hidden ?? true,
-    timeout: 30000,
+  // Spawn detached and resolve as soon as the process starts, instead of blocking
+  // until it exits. A launcher-style action should report "started" quickly;
+  // awaiting the full process lifetime (previously up to 30s) held the ring's
+  // selection lock and made the UI feel frozen for long-running commands. The
+  // trade-off is that a non-zero exit code is no longer surfaced as a failure —
+  // consistent with how file-open / url-open already behave.
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(commandLine, {
+      cwd: config.workingDirectory || undefined,
+      windowsHide: config.hidden ?? true,
+      detached: true,
+      stdio: 'ignore',
+      shell: true,
+    });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolve();
+    });
   });
 }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ACTION_CATALOG } from '../../../../shared/actionCatalog';
 import { MAX_FOLDER_CHILDREN } from '../../../../shared/constants';
+import { getSupportedAppId, SUPPORTED_APP_LABELS } from '../../../../shared/defaultProfiles';
 import type { ActionCategory, ActionDefinition, BubbleConfig, RingProfile, RingSlot } from '../../../../shared/types';
 import styles from './ActionLibrary.module.css';
 
@@ -23,6 +24,7 @@ const SECTIONS: Array<{ category: ActionCategory; label: string }> = [
   { category: 'adjustments', label: 'Adjustment actions' },
   { category: 'basic', label: 'Basic actions' },
   { category: 'structural', label: 'Submenu' },
+  { category: 'app', label: 'App actions' },
 ];
 
 function resolveIcon(name: string): AnyIcon {
@@ -58,6 +60,7 @@ function ActionCard({
 }): React.ReactElement {
   const Icon = resolveIcon(definition.iconName);
   const unavailable = definition.availability === 'requires-device' || definition.availability === 'requires-plugin';
+  const requiresSetup = definition.availability === 'requires-setup';
 
   return (
     <button
@@ -66,7 +69,11 @@ function ActionCard({
       onClick={onSelect}
       draggable={!unavailable}
       disabled={unavailable}
-      title={unavailable ? definition.unavailableReason : `Add ${definition.label}`}
+      title={unavailable
+        ? definition.unavailableReason
+        : requiresSetup
+          ? `${definition.label}: one-time shortcut setup required`
+          : `Add ${definition.label}`}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'copy';
         event.dataTransfer.setData('application/x-action-definition', definition.id);
@@ -77,6 +84,12 @@ function ActionCard({
       <span className={styles.actionCopy}>
         <strong>{definition.label}</strong>
         <small>{definition.description}</small>
+        {(definition.appId || requiresSetup) && (
+          <span className={styles.actionBadges}>
+            {definition.appId && <span>{SUPPORTED_APP_LABELS[definition.appId]}</span>}
+            {requiresSetup && <span className={styles.setupBadge}>Needs 1-min setup</span>}
+          </span>
+        )}
       </span>
       <span className={styles.actionState}>
         {unavailable ? <LockKeyhole size={13} /> : selected ? <Check size={14} /> : <Plus size={14} />}
@@ -223,19 +236,21 @@ export function ActionLibrary({
   onRemoveChild,
 }: ActionLibraryProps): React.ReactElement {
   const [query, setQuery] = useState('');
-  const [openSections, setOpenSections] = useState<Set<ActionCategory>>(() => new Set(['system']));
+  const [openSections, setOpenSections] = useState<Set<ActionCategory>>(() => new Set(['system', 'app']));
   const sortedSlots = [...profile.slots].sort((a, b) => a.position - b.position);
+  const supportedAppId = getSupportedAppId(profile.application?.processName);
 
   const filteredActions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return ACTION_CATALOG.filter((definition) => definition.category !== 'custom')
+      .filter((definition) => definition.category !== 'app' || definition.appId === supportedAppId)
       .filter((definition) => folderChildren === null || definition.bubbleType !== 'menu')
       .filter((definition) => {
         if (!normalizedQuery) return true;
         return [definition.label, definition.description, ...definition.searchTerms]
           .some((term) => term.toLowerCase().includes(normalizedQuery));
       });
-  }, [folderChildren, query]);
+  }, [folderChildren, query, supportedAppId]);
 
   const visibleSections = SECTIONS.map((section) => ({
     ...section,

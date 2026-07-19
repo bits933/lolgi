@@ -35,8 +35,13 @@ import {
   APP_LIST_ALL,
   APP_EXTRACT_ICON,
   APP_FETCH_URL_ICON,
+  BUILD_IDENTITY_GET,
+  DIAGNOSTICS_GET_RECENT,
+  DIAGNOSTICS_COPY_LAST,
 } from '../shared/ipcChannels';
 import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
+import type { RuntimeBuildIdentity } from '../shared/buildInfo';
+import type { DiagnosticCopyResult, DiagnosticEvent } from '../shared/diagnostics';
 import type { InstalledAppInfo } from '../main/utils/foregroundApp';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +55,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Get the full application config */
   getConfig: (): Promise<AppConfig> =>
     ipcRenderer.invoke(CONFIG_GET),
+
+  /** Get immutable source metadata plus runtime executable/mode identity. */
+  getBuildIdentity: (): Promise<RuntimeBuildIdentity> =>
+    ipcRenderer.invoke(BUILD_IDENTITY_GET) as Promise<RuntimeBuildIdentity>,
+
+  /** Get the bounded, redacted ring/action diagnostic event buffer. */
+  getRecentDiagnostics: (): Promise<DiagnosticEvent[]> =>
+    ipcRenderer.invoke(DIAGNOSTICS_GET_RECENT) as Promise<DiagnosticEvent[]>,
+
+  /** Copy the most recent correlated diagnostic through the main process. */
+  copyLastDiagnostic: (): Promise<DiagnosticCopyResult> =>
+    ipcRenderer.invoke(DIAGNOSTICS_COPY_LAST) as Promise<DiagnosticCopyResult>,
 
   // --- Config writes ---
 

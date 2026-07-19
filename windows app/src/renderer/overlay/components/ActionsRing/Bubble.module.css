@@ -4,8 +4,8 @@
   top: 50%;
   left: 50%;
 
-  width: 56px;
-  height: 56px;
+  width: var(--action-bubble-size, 56px);
+  height: var(--action-bubble-size, 56px);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -74,6 +74,42 @@
     border-color 150ms ease-out;
 }
 
+/* Infinite (unbounded) adjustment fill: an empty surface (matching the volume
+   bubble's empty --ring-surface) with the stacked fill layers below painted on
+   top. The empty base only shows during the very first lap, before anything is
+   completed. */
+.infiniteSurface {
+  background: var(--ring-surface);
+  transition:
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out,
+    background 150ms ease-out;
+}
+
+/* Stable physical color layers for the unbounded meter. JS only changes their
+   scale and stacking order from a deterministic phase frame; it never swaps a
+   color in an animation callback. */
+.fillLayer {
+  position: absolute;
+  inset: 0;
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  opacity: 1;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.fillLayerA {
+  background: var(--bubble-adjustment-fill);
+  z-index: 0;
+}
+
+.fillLayerB {
+  /* Second infinite-fill color. */
+  background: #262727;
+  z-index: 1;
+}
+
 /* OPEN STATE — translate to radial position per guide formula */
 .bubbleVisible {
   opacity: 1;
@@ -90,7 +126,7 @@
   box-shadow: var(--bubble-shadow);
 }
 
-/* Hover aesthetics — kept from previous MX style */
+/* Shared hover motion for every bubble type. */
 .hovered {
   z-index: 10;
   /* Faster transition for hover state specifically */
@@ -99,25 +135,21 @@
     opacity 0.22s ease;
 }
 
-.hovered .bubbleSurface:not(.fillSurface):not(.groupSurface) {
-  background: var(--ring-surface-hover);
-  border-color: var(--ring-border-hover);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
-  transition:
-    box-shadow 150ms ease-out,
-    border-color 150ms ease-out,
-    background 150ms ease-out;
-}
-
 /* Hover-specific scale up (+2px diameter) */
 .hovered.bubbleVisible {
   transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.08) translateZ(0);
 }
 
-.active .bubbleSurface {
+.active .bubbleSurface:not(.infiniteSurface) {
   background: var(--ring-accent-fill) !important;
   border-color: color-mix(in srgb, var(--ring-accent) 80%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 25%, transparent);
+}
+
+/* One hover treatment for static, menu, bounded-fill, and infinite-fill bubbles.
+   The shadow changes, but every surface keeps its existing interior fill/color. */
+.hovered .bubbleSurface {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
 }
 
 .icon {
@@ -155,17 +187,27 @@
 
 .label {
   position: absolute;
-  z-index: 2;
+  /* Keep labels above the bubble's fill/surface layers without changing its UI. */
+  z-index: 3;
   top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
+  display: block;
+  width: max-content;
+  box-sizing: border-box;
   font-size: 11px;
   line-height: 1.2;
   color: #ffffff;
-  max-width: 128px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 180px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   opacity: 0;
@@ -180,16 +222,22 @@
   opacity: 1;
 }
 
-/* Persistent sub-ring labels (F4.1) — always visible, sit beside the bubble */
+/* Optional persistent labels for callers that need an always-visible caption. */
 .labelPersistent {
   opacity: 1;
+}
+
+.labelSideAbove {
+  top: auto;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .labelSideRight {
   top: 50%;
   left: calc(100% + 10px);
-  transform: translateY(-50%);
-  max-width: 110px;
+  transform: translateY(calc(-50% + var(--label-outward-y, 0px)));
   text-align: left;
 }
 
@@ -197,9 +245,14 @@
   top: 50%;
   left: auto;
   right: calc(100% + 10px);
-  transform: translateY(-50%);
-  max-width: 110px;
+  transform: translateY(calc(-50% + var(--label-outward-y, 0px)));
   text-align: right;
+}
+
+.labelSideBelow {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .groupBubble {
@@ -212,18 +265,13 @@
   box-shadow: var(--bubble-shadow);
 }
 
-.hovered .groupSurface {
-  background: var(--ring-surface-hover);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
-}
-
 .groupDot {
   position: absolute;
   left: 50%;
   top: 50%;
   width: var(--bubble-nub-width);
   height: var(--bubble-nub-height);
-  transform: translate(-50%, -50%) rotate(var(--group-dot-angle, 0rad)) translateX(29px);
+  transform: translate(-50%, -50%) rotate(var(--group-dot-angle, 0rad)) translateX(calc(var(--action-bubble-radius, 28px) + 1px));
   border: 0;
   border-radius: 0 999px 999px 0;
   background: var(--ring-accent);

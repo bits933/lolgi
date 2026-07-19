@@ -19,15 +19,16 @@ export function useRingGeometry(count: number): BubblePosition[] {
  * left of centre and children fan out to its right.
  */
 export function useSubRingGeometry(
-  count: number
+  count: number,
+  bubbleDiameter = BUBBLE_SIZE,
 ): FolderLayout {
   return useMemo(
     () => computeFolderLayout({
       width: RING_SIZE,
       height: RING_SIZE,
-      bubbleDiameter: BUBBLE_SIZE,
+      bubbleDiameter,
       childCount: count,
     }),
-    [count]
+    [bubbleDiameter, count]
   );
 }

@@ -1,22 +1,28 @@
 {
   "name": "logi-actions-ring",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Logitech MX Actions Ring — Electron Desktop App",
   "main": "dist/main-bundled.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:overlay\" \"npm run dev:dashboard\" \"npm run dev:main\"",
+    "dev": "npm run build:identity && concurrently \"npm run dev:overlay\" \"npm run dev:dashboard\" \"npm run dev:main\"",
     "dev:overlay": "vite build --config vite.config.overlay.ts --watch",
     "dev:dashboard": "vite build --config vite.config.dashboard.ts --watch",
     "dev:main": "tsc -p tsconfig.main.json --watch",
-    "build": "npm run build:overlay && npm run build:dashboard && npm run build:main",
+    "build:identity": "node scripts/generate-build-info.mjs",
+    "build": "npm run build:identity && npm run build:artifacts",
+    "build:artifacts": "node -e \"require('fs').rmSync('dist/preload-outside-click.js',{force:true})\" && npm run build:overlay && npm run build:dashboard && npm run build:main",
     "build:overlay": "vite build --config vite.config.overlay.ts",
     "build:dashboard": "vite build --config vite.config.dashboard.ts",
-    "build:main": "esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main-bundled.js --external:electron --external:electron-store --external:loudness --format=cjs --target=node18 && esbuild src/preload/overlay.ts --bundle --platform=node --outfile=dist/preload-overlay.js --external:electron --format=cjs --target=node18 && esbuild src/preload/dashboard.ts --bundle --platform=node --outfile=dist/preload-dashboard.js --external:electron --format=cjs --target=node18 && esbuild src/preload/outsideClick.ts --bundle --platform=node --outfile=dist/preload-outside-click.js --external:electron --format=cjs --target=node18",
+    "build:main": "esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main-bundled.js --external:electron --external:electron-store --external:loudness --format=cjs --target=node18 && esbuild src/preload/overlay.ts --bundle --platform=node --outfile=dist/preload-overlay.js --external:electron --format=cjs --target=node18 && esbuild src/preload/dashboard.ts --bundle --platform=node --outfile=dist/preload-dashboard.js --external:electron --format=cjs --target=node18",
     "electron": "electron .",
     "start": "npm run build && npm run electron",
     "bubble": "npm run build && node -e \"delete process.env.ELECTRON_RUN_AS_NODE; delete process.env.VSCODE_ESM_ENTRYPOINT; require('child_process').spawnSync('npm run electron',{stdio:'inherit',shell:true,env:process.env})\"",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
+    "verify:package": "node scripts/verify-package.mjs",
+    "release:manifest": "node scripts/release-manifest.mjs",
+    "validate": "npm run typecheck && npm test",
+    "release:prepare": "npm run build:identity && npm run validate && npm run build:artifacts",
+    "pack": "npm run release:prepare && electron-builder --config electron-builder.yml --dir && npm run verify:package",
+    "dist": "npm run release:prepare && electron-builder --config electron-builder.yml && npm run verify:package && npm run release:manifest",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
   },
@@ -30,6 +36,7 @@
     "zustand": "4.5.7"
   },
   "devDependencies": {
+    "@electron/asar": "^3.4.1",
     "@types/node": "^20.0.0",
     "@types/react": "18.3.5",
     "@types/react-dom": "18.3.0",
@@ -44,27 +51,5 @@
   },
   "overrides": {
     "fast-uri": "3.1.2"
-  },
-  "build": {
-    "appId": "com.logitech.actionsring",
-    "productName": "Logi Actions Ring",
-    "files": [
-      "dist/**/*",
-      "src/assets/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/",
-        "to": "resources/"
-      }
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "resources/app-icon.png"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false
-    }
   }
 }

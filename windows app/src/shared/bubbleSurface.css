@@ -1,5 +1,8 @@
 :root {
-  /* Canonical Actions Ring bubble surface. Both renderers consume these tokens. */
+  /* Canonical Actions Ring bubble surface. Both renderers consume these tokens.
+     These are DEFAULTS/fallbacks: at runtime the user's chosen bubble color
+     overrides --bubble-fill/-stroke/-icon/-adjustment-fill via resolveBubbleSurface()
+     (dashboard: useTheme on :root; overlay: RingContainer inline on .ring). */
   --bubble-fill: #1e2128;
   --bubble-stroke: #383d48;
   --bubble-stroke-width: 1px;

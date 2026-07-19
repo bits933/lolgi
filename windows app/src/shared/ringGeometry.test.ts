@@ -6,6 +6,8 @@ import {
   computeArcLabelSide,
   computeFolderLayout,
   computeGroupDotAngle,
+  computeRadialLabelOffsetY,
+  computeRadialLabelSide,
 } from './ringGeometry';
 
 const RING_CENTER = 200;
@@ -13,6 +15,63 @@ const BUBBLE_RADIUS = 120;
 const ARC_RADIUS = 124;
 const BASE_STEP = 42;
 const MAX_SPAN = 240;
+const LABEL_TEST_BUBBLE_RADIUS = 30;
+const LABEL_TEST_GAP = 10;
+const LABEL_TEST_WIDTH = 180;
+const LABEL_TEST_HEIGHT = 40;
+
+interface TestBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+function radialLabelBounds(position: { x: number; y: number; angle: number }): TestBounds {
+  const side = computeRadialLabelSide(position);
+  const offsetY = computeRadialLabelOffsetY(position);
+
+  if (side === 'above') {
+    return {
+      left: position.x - LABEL_TEST_WIDTH / 2,
+      right: position.x + LABEL_TEST_WIDTH / 2,
+      top: position.y - LABEL_TEST_BUBBLE_RADIUS - LABEL_TEST_GAP - LABEL_TEST_HEIGHT,
+      bottom: position.y - LABEL_TEST_BUBBLE_RADIUS - LABEL_TEST_GAP,
+    };
+  }
+  if (side === 'below') {
+    return {
+      left: position.x - LABEL_TEST_WIDTH / 2,
+      right: position.x + LABEL_TEST_WIDTH / 2,
+      top: position.y + LABEL_TEST_BUBBLE_RADIUS + LABEL_TEST_GAP,
+      bottom: position.y + LABEL_TEST_BUBBLE_RADIUS + LABEL_TEST_GAP + LABEL_TEST_HEIGHT,
+    };
+  }
+  if (side === 'left') {
+    return {
+      left: position.x - LABEL_TEST_BUBBLE_RADIUS - LABEL_TEST_GAP - LABEL_TEST_WIDTH,
+      right: position.x - LABEL_TEST_BUBBLE_RADIUS - LABEL_TEST_GAP,
+      top: position.y - LABEL_TEST_HEIGHT / 2 + offsetY,
+      bottom: position.y + LABEL_TEST_HEIGHT / 2 + offsetY,
+    };
+  }
+  return {
+    left: position.x + LABEL_TEST_BUBBLE_RADIUS + LABEL_TEST_GAP,
+    right: position.x + LABEL_TEST_BUBBLE_RADIUS + LABEL_TEST_GAP + LABEL_TEST_WIDTH,
+    top: position.y - LABEL_TEST_HEIGHT / 2 + offsetY,
+    bottom: position.y + LABEL_TEST_HEIGHT / 2 + offsetY,
+  };
+}
+
+function boundsOverlap(a: TestBounds, b: TestBounds): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+function distanceFromBounds(point: { x: number; y: number }, bounds: TestBounds): number {
+  const nearestX = Math.max(bounds.left, Math.min(point.x, bounds.right));
+  const nearestY = Math.max(bounds.top, Math.min(point.y, bounds.bottom));
+  return Math.hypot(nearestX - point.x, nearestY - point.y);
+}
 
 // The eight main-ring slots, as (x, y) in the 400px ring space.
 const MAIN_SLOTS = computeRingPositions(8, RING_CENTER, RING_CENTER, BUBBLE_RADIUS);
@@ -27,6 +86,90 @@ describe('computeGroupDotAngle', () => {
     expect(computeGroupDotAngle(positions[1])).toBeCloseTo(0, 5);
     expect(computeGroupDotAngle(positions[2])).toBeCloseTo(Math.PI / 2, 5);
     expect(Math.abs(computeGroupDotAngle(positions[3]))).toBeCloseTo(Math.PI, 5);
+  });
+});
+
+describe('computeRadialLabelSide', () => {
+  it('puts the eight main-ring labels outside without routing diagonal pills through neighbours', () => {
+    expect(MAIN_SLOTS.map(computeRadialLabelSide)).toEqual([
+      'above',
+      'right',
+      'right',
+      'right',
+      'below',
+      'left',
+      'left',
+      'left',
+    ]);
+  });
+
+  it('keeps near-diagonal labels on the horizontal outside edge', () => {
+    expect(computeRadialLabelSide({ x: 0, y: 0, angle: -Math.PI / 3 })).toBe('right');
+    expect(computeRadialLabelSide({ x: 0, y: 0, angle: -(2 * Math.PI) / 3 })).toBe('left');
+  });
+
+  it('nudges diagonal side labels vertically away from the ring centre', () => {
+    expect(computeRadialLabelOffsetY({ x: 0, y: 0, angle: -Math.PI / 3 })).toBe(-8);
+    expect(computeRadialLabelOffsetY({ x: 0, y: 0, angle: Math.PI / 3 })).toBe(8);
+    expect(computeRadialLabelOffsetY(MAIN_SLOTS[0])).toBe(0);
+    expect(computeRadialLabelOffsetY(MAIN_SLOTS[4])).toBe(0);
+  });
+
+  it('keeps a two-line outward pill clear of every neighbouring bubble up to 12 slots', () => {
+    for (let count = 2; count <= 12; count += 1) {
+      const positions = computeRingPositions(count, RING_CENTER, RING_CENTER, BUBBLE_RADIUS);
+      positions.forEach((position, labelIndex) => {
+        const label = radialLabelBounds(position);
+
+        positions.forEach((bubble, bubbleIndex) => {
+          if (bubbleIndex === labelIndex) return;
+          const distance = distanceFromBounds(bubble, label);
+          expect(distance, `slot ${labelIndex} label overlaps slot ${bubbleIndex} at count ${count}`)
+            .toBeGreaterThanOrEqual(LABEL_TEST_BUBBLE_RADIUS);
+        });
+      });
+    }
+  });
+
+  it('keeps sub-ring hover pills outside and clear of every bubble and pill', () => {
+    for (let count = 1; count <= 5; count += 1) {
+      const positions = computeFolderLayout({
+        width: 400,
+        height: 400,
+        bubbleDiameter: LABEL_TEST_BUBBLE_RADIUS * 2,
+        childCount: count,
+      }).children;
+      const labels = positions.map(radialLabelBounds);
+
+      expect(positions.map(computeRadialLabelSide)).toEqual(
+        count === 1
+          ? ['right']
+          : count === 2
+            ? ['right', 'right']
+            : count === 3
+              ? ['right', 'right', 'right']
+              : count === 4
+                ? ['right', 'right', 'right', 'right']
+                : ['above', 'right', 'right', 'right', 'below'],
+      );
+
+      labels.forEach((label, labelIndex) => {
+        positions.forEach((bubble, bubbleIndex) => {
+          if (bubbleIndex === labelIndex) return;
+          expect(
+            distanceFromBounds(bubble, label),
+            `sub-ring ${count}: label ${labelIndex} overlaps bubble ${bubbleIndex}`,
+          ).toBeGreaterThanOrEqual(LABEL_TEST_BUBBLE_RADIUS);
+        });
+        labels.forEach((otherLabel, otherIndex) => {
+          if (otherIndex <= labelIndex) return;
+          expect(
+            boundsOverlap(label, otherLabel),
+            `sub-ring ${count}: labels ${labelIndex} and ${otherIndex} overlap`,
+          ).toBe(false);
+        });
+      });
+    }
   });
 });
 

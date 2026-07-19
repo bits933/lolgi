@@ -1,6 +1,6 @@
 /* In the Electron overlay the window IS the ring — no fullscreen overlay needed */
 
-/* Ring container — 400×400, fills the transparent window */
+/* The 400×400 ring is centered inside a larger transparent label-safe window. */
 .ring {
   --ring-surface: #1e2128;
   --ring-surface-hover: #262a33;
@@ -8,13 +8,15 @@
   --ring-border-default: #383d48;
   --ring-border-hover: #4a505d;
 
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 400px;
   height: 400px;
   pointer-events: none;
   will-change: transform, opacity;
   /* Promote ring to its own GPU compositing layer */
-  transform-origin: top left;
+  transform-origin: center;
   backface-visibility: hidden;
 }
 
@@ -35,8 +37,9 @@
   padding: 0;
   color: inherit;
   font: inherit;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  /* Match the action bubbles: same fill, border, shadow, and icon color. */
+  background: var(--bubble-fill);
+  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
   box-shadow: var(--bubble-shadow);
   transform: translate(-50%, -50%) scale(0.62);
   opacity: 0;
@@ -52,15 +55,10 @@
   opacity: 1;
 }
 
-.centerBtn:hover {
-  transform: translate(-50%, -50%) scale(1.1) !important;
-  background: #000;
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: var(--bubble-shadow);
-}
+/* No hover state or glow — the center button only closes the ring on click. */
 
 .centerBtn svg {
-  opacity: 0.52;
+  opacity: 1;
 }
 
 /* Sub-ring parent anchor (F4.1) — the folder bubble stays in place, highlighted,

@@ -1,14 +1,48 @@
-import { BrowserWindow, screen } from 'electron';
-import type { Rectangle } from 'electron';
+import { BrowserWindow } from 'electron';
+import { randomUUID } from 'crypto';
 import { join } from 'path';
 import { OVERLAY_WINDOW_SIZE, DASHBOARD_WIDTH, DASHBOARD_HEIGHT } from '../shared/constants';
 import { DASHBOARD_CLOSE_REQUESTED, RING_CLOSE } from '../shared/ipcChannels';
+import {
+  registerOwnedWindowHandle,
+  setForegroundPollingBusy,
+  unregisterOwnedWindowHandle,
+} from './utils/foregroundApp';
+import { endActiveRingSession } from './profileRuntime';
 
 let overlayWindow: BrowserWindow | null = null;
-let outsideClickWindow: BrowserWindow | null = null;
 let dashboardWindow: BrowserWindow | null = null;
+let overlayWindowHandle: string | null = null;
+let dashboardWindowHandle: string | null = null;
 let dashboardDirty = false;
 let overlayHideSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingOverlayCloseId: string | null = null;
+const overlayBlurDismissSuppressions = new Set<symbol>();
+// While the ring owns the screen (and foreground focus), suspend background
+// foreground polling so it cannot sample one of our own windows. Idempotent so
+// unbalanced show/hide calls cannot leave polling permanently suspended.
+let overlaySuspendsPolling = false;
+
+export interface RingWindowDiagnosticState {
+  overlay: {
+    exists: boolean;
+    visible: boolean;
+    focused: boolean;
+    focusable: boolean;
+  };
+  dashboard: {
+    exists: boolean;
+    visible: boolean;
+    focused: boolean;
+    focusable: boolean;
+  };
+}
+
+function setOverlayPollingSuspended(suspended: boolean): void {
+  if (suspended === overlaySuspendsPolling) return;
+  overlaySuspendsPolling = suspended;
+  setForegroundPollingBusy(suspended);
+}
 
 function clearOverlayHideSafetyTimer(): void {
   if (!overlayHideSafetyTimer) return;
@@ -16,60 +50,11 @@ function clearOverlayHideSafetyTimer(): void {
   overlayHideSafetyTimer = null;
 }
 
-function getDesktopBounds(): Rectangle {
-  const displays = screen.getAllDisplays();
-  const left = Math.min(...displays.map((display) => display.bounds.x));
-  const top = Math.min(...displays.map((display) => display.bounds.y));
-  const right = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width));
-  const bottom = Math.max(...displays.map((display) => display.bounds.y + display.bounds.height));
-  return { x: left, y: top, width: right - left, height: bottom - top };
-}
-
-function createOutsideClickWindow(): BrowserWindow {
-  const bounds = getDesktopBounds();
-  outsideClickWindow = new BrowserWindow({
-    ...bounds,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    alwaysOnTop: true,
-    focusable: true,
-    fullscreenable: false,
-    hasShadow: false,
-    movable: false,
-    resizable: false,
-    show: false,
-    skipTaskbar: true,
-    webPreferences: {
-      preload: join(__dirname, 'preload-outside-click.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
-
-  outsideClickWindow.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(
-      '<!doctype html><html><body style="margin:0;width:100vw;height:100vh;background:rgba(0,0,0,0.004)"></body></html>'
-    )}`
-  );
-  outsideClickWindow.on('closed', () => {
-    outsideClickWindow = null;
-  });
-  // The transparent page can miss its first mouse event on Windows. A desktop
-  // click still focuses this native window, so keep a main-process fallback.
-  outsideClickWindow.on('focus', dismissOverlayFromOutsideClick);
-
-  return outsideClickWindow;
-}
-
 // ---------------------------------------------------------------------------
-// Overlay Window (400×400 transparent, always on top)
+// Label-safe transparent overlay window, always on top
 // ---------------------------------------------------------------------------
 
 export function createOverlayWindow(): BrowserWindow {
-  createOutsideClickWindow();
-
   overlayWindow = new BrowserWindow({
     width: OVERLAY_WINDOW_SIZE,
     height: OVERLAY_WINDOW_SIZE,
@@ -97,11 +82,47 @@ export function createOverlayWindow(): BrowserWindow {
     );
   }
 
-  // Make the window click-through when mouse is not over a bubble
+  // Only this bounded overlay is mouse-interactive. The rest of the desktop has
+  // no Action Ring window above it, so the original click reaches the target app.
   overlayWindow.setIgnoreMouseEvents(false);
 
-  overlayWindow.on('closed', () => {
-    overlayWindow = null;
+  overlayWindowHandle = registerOwnedWindowHandle(
+    overlayWindow.getNativeWindowHandle()
+  );
+  const createdOverlayWindow = overlayWindow;
+  const createdOverlayWindowHandle = overlayWindowHandle;
+  createdOverlayWindow.on('closed', () => {
+    unregisterOwnedWindowHandle(createdOverlayWindowHandle);
+    if (overlayWindow === createdOverlayWindow) {
+      overlayWindowHandle = null;
+      clearOverlayHideSafetyTimer();
+      pendingOverlayCloseId = null;
+      overlayBlurDismissSuppressions.clear();
+      setOverlayPollingSuspended(false);
+      overlayWindow = null;
+    }
+  });
+  createdOverlayWindow.on('blur', () => {
+    if (overlayWindow !== createdOverlayWindow) return;
+    if (!createdOverlayWindow.isVisible()) return;
+    // IPC deliberately makes the overlay non-focusable while an action is sent
+    // to its captured target. That handoff is not an outside click and must not
+    // close a keep-open adjustment ring.
+    if (
+      overlayBlurDismissSuppressions.size > 0 ||
+      !createdOverlayWindow.isFocusable()
+    ) {
+      return;
+    }
+    dismissOverlayFromOutsideClick();
+  });
+  createdOverlayWindow.webContents.on('render-process-gone', () => {
+    if (overlayWindow !== createdOverlayWindow) return;
+    createdOverlayWindow.hide();
+    clearOverlayHideSafetyTimer();
+    pendingOverlayCloseId = null;
+    overlayBlurDismissSuppressions.clear();
+    setOverlayPollingSuspended(false);
   });
 
   return overlayWindow;
@@ -111,17 +132,36 @@ export function getOverlayWindow(): BrowserWindow | null {
   return overlayWindow;
 }
 
+/**
+ * Privacy-safe native window state for correlated diagnostics. Deliberately
+ * excludes titles, bounds, handles, process IDs, and document/app content.
+ */
+export function getRingWindowDiagnosticState(): RingWindowDiagnosticState {
+  function describe(window: BrowserWindow | null) {
+    const exists = Boolean(window && !window.isDestroyed());
+    return {
+      exists,
+      visible: exists ? window!.isVisible() : false,
+      focused: exists ? window!.isFocused() : false,
+      focusable: exists ? window!.isFocusable() : false,
+    };
+  }
+
+  return {
+    overlay: describe(overlayWindow),
+    dashboard: describe(dashboardWindow),
+  };
+}
+
 export function showOverlay(x: number, y: number, size = OVERLAY_WINDOW_SIZE): void {
   if (!overlayWindow) return;
   // A reopened ring must not inherit a close fallback scheduled by the prior
   // interaction; otherwise it can disappear shortly after opening.
   clearOverlayHideSafetyTimer();
-  if (!outsideClickWindow || outsideClickWindow.isDestroyed()) {
-    createOutsideClickWindow();
-  }
+  pendingOverlayCloseId = null;
+  overlayBlurDismissSuppressions.clear();
 
-  outsideClickWindow?.setBounds(getDesktopBounds());
-  outsideClickWindow?.showInactive();
+  setOverlayPollingSuspended(true);
   overlayWindow.setBounds({ x, y, width: size, height: size });
   overlayWindow.show();
   overlayWindow.focus();
@@ -130,27 +170,59 @@ export function showOverlay(x: number, y: number, size = OVERLAY_WINDOW_SIZE): v
 
 export function hideOverlay(): void {
   clearOverlayHideSafetyTimer();
-  outsideClickWindow?.hide();
   overlayWindow?.hide();
+  pendingOverlayCloseId = null;
+  overlayBlurDismissSuppressions.clear();
+  setOverlayPollingSuspended(false);
 }
 
-export function scheduleOverlayHideFallback(): void {
+export function scheduleOverlayHideFallback(closeId: string): void {
   clearOverlayHideSafetyTimer();
-  overlayHideSafetyTimer = setTimeout(() => {
+  pendingOverlayCloseId = closeId;
+  const safetyTimer = setTimeout(() => {
+    if (
+      overlayHideSafetyTimer !== safetyTimer ||
+      pendingOverlayCloseId !== closeId
+    ) {
+      return;
+    }
     overlayHideSafetyTimer = null;
     hideOverlay();
   }, 900);
+  overlayHideSafetyTimer = safetyTimer;
 }
 
-export function completeOverlayClose(): void {
+export function completeOverlayClose(closeId: string | null | undefined): void {
+  // A completion can arrive after another ring has opened and started closing.
+  // Only the animation associated with the currently pending close may hide it.
+  if (!closeId || pendingOverlayCloseId !== closeId) return;
   clearOverlayHideSafetyTimer();
   hideOverlay();
 }
 
+/**
+ * Prevent an intentional focus handoff from being mistaken for an outside click.
+ * The returned release function is idempotent, which makes it safe in `finally`.
+ */
+export function suppressOverlayBlurDismissal(): () => void {
+  const suppression = Symbol('overlay-blur-dismissal');
+  overlayBlurDismissSuppressions.add(suppression);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    overlayBlurDismissSuppressions.delete(suppression);
+  };
+}
+
 export function dismissOverlayFromOutsideClick(): void {
-  if (!overlayWindow?.isVisible()) return;
-  overlayWindow.webContents.send(RING_CLOSE);
-  scheduleOverlayHideFallback();
+  if (!overlayWindow?.isVisible() || pendingOverlayCloseId) return;
+  const closeId = randomUUID();
+  // Blur bypasses the legacy outside-click IPC route, so invalidate the bound
+  // target immediately instead of leaving it actionable during the exit tween.
+  endActiveRingSession();
+  scheduleOverlayHideFallback(closeId);
+  overlayWindow.webContents.send(RING_CLOSE, closeId);
 }
 
 // ---------------------------------------------------------------------------
@@ -182,21 +254,31 @@ export function createDashboardWindow(): BrowserWindow {
     );
   }
 
+  dashboardWindowHandle = registerOwnedWindowHandle(
+    dashboardWindow.getNativeWindowHandle()
+  );
+  const createdDashboardWindow = dashboardWindow;
+  const createdDashboardWindowHandle = dashboardWindowHandle;
+
   // Hide instead of close. Dirty drafts first go through the renderer guard.
-  dashboardWindow.on('close', (e) => {
+  createdDashboardWindow.on('close', (e) => {
     const { getIsQuitting } = require('./main') as { getIsQuitting: () => boolean };
     if (!getIsQuitting()) {
       e.preventDefault();
       if (dashboardDirty) {
-        dashboardWindow?.webContents.send(DASHBOARD_CLOSE_REQUESTED);
+        createdDashboardWindow.webContents.send(DASHBOARD_CLOSE_REQUESTED);
       } else {
-        dashboardWindow?.hide();
+        createdDashboardWindow.hide();
       }
     }
   });
 
-  dashboardWindow.on('closed', () => {
-    dashboardWindow = null;
+  createdDashboardWindow.on('closed', () => {
+    unregisterOwnedWindowHandle(createdDashboardWindowHandle);
+    if (dashboardWindow === createdDashboardWindow) {
+      dashboardWindowHandle = null;
+      dashboardWindow = null;
+    }
   });
 
   return dashboardWindow;

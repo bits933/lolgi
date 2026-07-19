@@ -23,20 +23,41 @@ import type {
 // Exposed to the renderer via window.electronAPI
 // ---------------------------------------------------------------------------
 
+let activeRingSessionId: string | null = null;
+let closingRingSessionId: string | null = null;
+let closingActiveRingSessionId: string | null = null;
+
+function captureClosingRing(closeId: string | null | undefined): void {
+  // Do not let a newer close relabel a still-pending animation callback. If the
+  // older animation was cancelled by a reopen, the newer close's main-process
+  // safety timer remains responsible for hiding the window.
+  if (closingRingSessionId !== null) return;
+  closingActiveRingSessionId = activeRingSessionId;
+  closingRingSessionId = closeId ?? activeRingSessionId;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // --- Events from main → renderer ---
 
   /** Subscribe to ring:open event */
   onRingOpen: (callback: (payload: RingOpenPayload) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: RingOpenPayload) =>
+    const handler = (_event: Electron.IpcRendererEvent, payload: RingOpenPayload) => {
+      activeRingSessionId = payload.ringSessionId;
       callback(payload);
+    };
     ipcRenderer.on(RING_OPEN, handler);
     return () => ipcRenderer.removeListener(RING_OPEN, handler);
   },
 
   /** Subscribe to ring:close event */
   onRingClose: (callback: () => void) => {
-    const handler = () => callback();
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      closeId?: string
+    ) => {
+      captureClosingRing(closeId);
+      callback();
+    };
     ipcRenderer.on(RING_CLOSE, handler);
     return () => ipcRenderer.removeListener(RING_CLOSE, handler);
   },
@@ -60,16 +81,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Execute a bubble action */
   executeAction: (payload: ActionExecutePayload): Promise<ActionResult> =>
-    ipcRenderer.invoke(ACTION_EXECUTE, payload),
+    ipcRenderer.invoke(ACTION_EXECUTE, {
+      ...payload,
+      ringSessionId: activeRingSessionId ?? undefined,
+    }),
 
   /** Tell main the overlay should close */
   closeOverlay: (): void => {
-    ipcRenderer.send(OVERLAY_CLOSE);
+    const closeSessionId = activeRingSessionId;
+    captureClosingRing(closeSessionId);
+    ipcRenderer.send(OVERLAY_CLOSE, closeSessionId);
   },
 
   /** Tell main exit animation is complete; safe to hide window */
   notifyAnimationComplete: (): void => {
-    ipcRenderer.send(OVERLAY_ANIMATION_COMPLETE);
+    const completedSessionId = closingRingSessionId;
+    ipcRenderer.send(OVERLAY_ANIMATION_COMPLETE, completedSessionId);
+    if (activeRingSessionId === closingActiveRingSessionId) {
+      activeRingSessionId = null;
+    }
+    closingRingSessionId = null;
+    closingActiveRingSessionId = null;
   },
 
   /** Request current system state */

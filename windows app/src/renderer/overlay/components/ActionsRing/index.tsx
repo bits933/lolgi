@@ -5,14 +5,20 @@ import { RingContainer } from './RingContainer';
 import { Bubble } from './Bubble';
 import { SubRing } from './SubRing';
 import {
-  BUBBLE_SIZE,
-  HOVER_DEADZONE_RADIUS,
+  getActionBubbleSize,
   EXIT_UNMOUNT_DELAY_MS,
   OUTSIDE_BUBBLE_DISMISS_PADDING,
   RING_SIZE_SCALE,
 } from '../../../../shared/constants';
 import type { BubbleConfig, BubblePosition } from '../../../../shared/types';
 import ringStyles from './RingContainer.module.css';
+import {
+  ACTION_PENDING_MESSAGE,
+  observeActionExecution,
+  type ActionExecutionController,
+  type ActionTerminalOutcome,
+} from './actionExecutionObserver';
+import { resolveMainRingHover } from './hoverGeometry';
 
 const POINTER_GEOMETRY_EPSILON_PX = 0.01;
 
@@ -24,6 +30,7 @@ export function ActionsRing(): React.ReactElement | null {
   const accentColor = useOverlayStore((s) => s.accentColor);
   const accentFillColor = useOverlayStore((s) => s.accentFillColor);
   const accentForegroundColor = useOverlayStore((s) => s.accentForegroundColor);
+  const bubbleSurface = useOverlayStore((s) => s.bubbleSurface);
   const closeRing = useOverlayStore((s) => s.closeRing);
   const setHoveredIndex = useOverlayStore((s) => s.setHoveredIndex);
 
@@ -31,6 +38,7 @@ export function ActionsRing(): React.ReactElement | null {
   const ringRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const actionInFlightRef = useRef(false);
+  const activeActionExecutionRef = useRef<ActionExecutionController | null>(null);
 
   const [shouldRender, setShouldRender] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -42,6 +50,23 @@ export function ActionsRing(): React.ReactElement | null {
   const [subRingParentPos, setSubRingParentPos] = React.useState<BubblePosition | null>(null);
   const [isSubRingVisible, setIsSubRingVisible] = React.useState(false);
   const [isSubRingClosing, setIsSubRingClosing] = React.useState(false);
+
+  const cancelActiveActionExecution = useCallback(() => {
+    activeActionExecutionRef.current?.cancel();
+    activeActionExecutionRef.current = null;
+    actionInFlightRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) cancelActiveActionExecution();
+  }, [isOpen, cancelActiveActionExecution]);
+
+  useEffect(
+    () => () => {
+      cancelActiveActionExecution();
+    },
+    [cancelActiveActionExecution]
+  );
 
   // ---------------------------------------------------------------------------
   // Entrance / Exit state machine
@@ -115,46 +140,18 @@ export function ActionsRing(): React.ReactElement | null {
       return;
     }
 
-    const ringCenterX = 200;
-    const ringCenterY = 200;
     const mouse = { x: 0, y: 0, pending: false };
     let rafId = 0;
 
     function processHover(): void {
       mouse.pending = false;
 
-      // Pointer events use scaled window pixels; geometry remains in 400px space.
-      const scale = RING_SIZE_SCALE[ringSize];
-      const dx = mouse.x / scale - ringCenterX;
-      const dy = mouse.y / scale - ringCenterY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < HOVER_DEADZONE_RADIUS) {
-        if (useOverlayStore.getState().hoveredIndex !== null) {
-          setHoveredIndex(null);
-        }
-        return;
-      }
-
-      const cursorAngle = Math.atan2(dy, dx);
-
-      let closestIndex = 0;
-      let smallestAngleDiff = Infinity;
-
-      for (let i = 0; i < positions.length; i++) {
-        let diff = cursorAngle - positions[i].angle;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        const absDiff = Math.abs(diff);
-
-        if (absDiff < smallestAngleDiff) {
-          smallestAngleDiff = absDiff;
-          closestIndex = i;
-        }
-      }
-
-      if (closestIndex !== useOverlayStore.getState().hoveredIndex) {
-        setHoveredIndex(closestIndex);
+      const ring = ringRef.current;
+      const nextHoveredIndex = ring
+        ? resolveMainRingHover(mouse, ring.getBoundingClientRect(), positions)
+        : null;
+      if (nextHoveredIndex !== useOverlayStore.getState().hoveredIndex) {
+        setHoveredIndex(nextHoveredIndex);
       }
     }
 
@@ -172,7 +169,7 @@ export function ActionsRing(): React.ReactElement | null {
       cancelAnimationFrame(rafId);
       setHoveredIndex(null);
     };
-  }, [isVisible, isClosing, subRingParent, positions, ringSize, setHoveredIndex]);
+  }, [isVisible, isClosing, subRingParent, positions, setHoveredIndex]);
 
   useEffect(() => {
     if (!isOpen || isClosing) return;
@@ -184,7 +181,7 @@ export function ActionsRing(): React.ReactElement | null {
       if (target?.closest('[data-ring-control="true"]')) return;
 
       const visibleBubbles = document.querySelectorAll<HTMLElement>('[data-bubble="true"]');
-      const bubbleRadius = (BUBBLE_SIZE * RING_SIZE_SCALE[ringSize]) / 2;
+      const bubbleRadius = (getActionBubbleSize(ringSize) * RING_SIZE_SCALE[ringSize]) / 2;
       const isNearBubble = Array.from(visibleBubbles).some((bubble) => {
         const computedStyle = window.getComputedStyle(bubble);
         if (computedStyle.pointerEvents === 'none' || Number(computedStyle.opacity) < 0.1) {
@@ -238,8 +235,77 @@ export function ActionsRing(): React.ReactElement | null {
   // ---------------------------------------------------------------------------
   // Selection handler
   // ---------------------------------------------------------------------------
+  const executeBubbleAction = useCallback(
+    (config: BubbleConfig, fromSubRing: boolean) => {
+      if (actionInFlightRef.current) return;
+
+      // A previous invocation can only remain here after the user explicitly
+      // dismissed/reopened the ring; its IPC promise is still safely consumed.
+      activeActionExecutionRef.current?.cancel();
+      actionInFlightRef.current = true;
+
+      let controller: ActionExecutionController;
+      controller = observeActionExecution(
+        () =>
+          window.electronAPI.executeAction({
+            bubbleId: config.id,
+            definitionId: config.definitionId,
+            actionType: config.actionType,
+            payload: config.payload,
+            parameters: config.parameters,
+          }),
+        {
+          onPending: () => {
+            setActionError(ACTION_PENDING_MESSAGE);
+          },
+          onRelease: (reason) => {
+            // An unknown, timed-out outcome must not allow a second action to be
+            // launched on top of one that may still complete. The ring itself
+            // remains dismissible; closing it cancels this UI observer.
+            if (
+              reason === 'settled' &&
+              activeActionExecutionRef.current === controller
+            ) {
+              actionInFlightRef.current = false;
+            }
+          },
+          onSuccess: () => {
+            // Closing is justified only by an explicit successful ActionResult,
+            // including a success that arrives after the pending threshold.
+            if (fromSubRing) {
+              setSubRingParent(null);
+              setSubRingParentPos(null);
+              setIsSubRingVisible(false);
+            }
+            closeRing();
+            window.electronAPI.closeOverlay();
+          },
+          onFailure: (message: string, outcome: ActionTerminalOutcome) => {
+            if (outcome.kind === 'rejection') {
+              console.error('[ActionsRing] executeAction failed:', outcome.error);
+            }
+            setActionError(message);
+          },
+          onObserverError: (error) => {
+            console.error('[ActionsRing] action observer callback failed:', error);
+            setActionError('The action result could not be displayed. The ring has stayed open.');
+          },
+        }
+      );
+
+      activeActionExecutionRef.current = controller;
+      void controller.completion.then(() => {
+        if (activeActionExecutionRef.current === controller) {
+          activeActionExecutionRef.current = null;
+          actionInFlightRef.current = false;
+        }
+      });
+    },
+    [closeRing]
+  );
+
   const handleSelect = useCallback(
-    async (config: BubbleConfig) => {
+    (config: BubbleConfig) => {
       if (isClosing) return;
 
       if (config.type === 'menu') {
@@ -254,62 +320,18 @@ export function ActionsRing(): React.ReactElement | null {
         return;
       }
 
-      if (actionInFlightRef.current) return;
-      actionInFlightRef.current = true;
-      try {
-        const result = await window.electronAPI.executeAction({
-          bubbleId: config.id,
-          actionType: config.actionType,
-          payload: config.payload,
-          parameters: config.parameters,
-        });
-        if (!result.success) {
-          setActionError(result.message ?? result.error ?? 'This action could not be completed.');
-          return;
-        }
-        closeRing();
-        window.electronAPI.closeOverlay();
-      } catch (err) {
-        console.error('[ActionsRing] executeAction failed:', err);
-        setActionError('The action service did not respond.');
-      } finally {
-        actionInFlightRef.current = false;
-      }
+      executeBubbleAction(config, false);
     },
-    [closeRing, isClosing, bubbles, positions]
+    [isClosing, bubbles, positions, executeBubbleAction]
   );
 
   // Sub-bubble selected — execute action and close overlay
   const handleSubSelect = useCallback(
-    async (config: BubbleConfig) => {
+    (config: BubbleConfig) => {
       if (isClosing || isSubRingClosing) return;
-      if (actionInFlightRef.current) return;
-      actionInFlightRef.current = true;
-
-      try {
-        const result = await window.electronAPI.executeAction({
-          bubbleId: config.id,
-          actionType: config.actionType,
-          payload: config.payload,
-          parameters: config.parameters,
-        });
-        if (!result.success) {
-          setActionError(result.message ?? result.error ?? 'This action could not be completed.');
-          return;
-        }
-        setSubRingParent(null);
-        setSubRingParentPos(null);
-        setIsSubRingVisible(false);
-        closeRing();
-        window.electronAPI.closeOverlay();
-      } catch (err) {
-        console.error('[ActionsRing] sub-bubble executeAction failed:', err);
-        setActionError('The action service did not respond.');
-      } finally {
-        actionInFlightRef.current = false;
-      }
+      executeBubbleAction(config, true);
     },
-    [closeRing, isClosing, isSubRingClosing]
+    [isClosing, isSubRingClosing, executeBubbleAction]
   );
 
   // Sub-ring back button — animate out, restore main ring
@@ -387,6 +409,7 @@ export function ActionsRing(): React.ReactElement | null {
       accentColor={accentColor}
       accentFillColor={accentFillColor}
       accentForegroundColor={accentForegroundColor}
+      bubbleSurface={bubbleSurface}
     >
       {/* Center close button — hidden while a folder is expanded */}
       <button
@@ -405,7 +428,7 @@ export function ActionsRing(): React.ReactElement | null {
           height="18"
           viewBox="0 0 18 18"
           fill="none"
-          stroke="var(--ring-on-surface)"
+          stroke="var(--bubble-icon)"
           strokeWidth="2.5"
           strokeLinecap="round"
         >
@@ -441,6 +464,7 @@ export function ActionsRing(): React.ReactElement | null {
           ringSize={ringSize}
           isVisible={isSubRingVisible}
           isClosing={isSubRingClosing}
+          ringRef={ringRef}
           onBack={handleSubRingBack}
           onSelect={handleSubSelect}
           onActionError={setActionError}

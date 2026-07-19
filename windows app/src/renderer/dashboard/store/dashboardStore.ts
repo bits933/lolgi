@@ -55,7 +55,11 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   setTheme: async (theme: ThemeConfig) => {
     const currentTheme = get().config?.theme;
-    if (currentTheme?.mode === theme.mode && currentTheme.accentColor === theme.accentColor) return;
+    if (
+      currentTheme?.mode === theme.mode &&
+      currentTheme.accentColor === theme.accentColor &&
+      currentTheme.bubbleColor === theme.bubbleColor
+    ) return;
     const result = await window.electronAPI.setTheme(theme);
     if (result.success) {
       set((s) => ({

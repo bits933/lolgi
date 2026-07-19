@@ -2,14 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as LucideIcons from 'lucide-react';
 import type { BubbleConfig, BubblePosition, RingSize } from '../../../../shared/types';
 import {
-  HOVER_DEADZONE_RADIUS,
+  getActionBubbleSize,
   MAX_FOLDER_CHILDREN,
-  RING_SIZE_SCALE,
   SUB_RING_ARC_BASE_STEP_DEG,
 } from '../../../../shared/constants';
 import { useSubRingGeometry } from './useRingGeometry';
 import { Bubble } from './Bubble';
 import ringStyles from './RingContainer.module.css';
+import { resolveSubRingHover } from './hoverGeometry';
 
 interface SubRingProps {
   parent: BubbleConfig;
@@ -17,6 +17,7 @@ interface SubRingProps {
   ringSize: RingSize;
   isVisible: boolean;
   isClosing: boolean;
+  ringRef: React.RefObject<HTMLDivElement>;
   onBack: () => void;
   onSelect: (config: BubbleConfig) => void;
   onActionError: (message: string) => void;
@@ -42,6 +43,7 @@ export function SubRing({
   ringSize,
   isVisible,
   isClosing,
+  ringRef,
   onBack,
   onSelect,
   onActionError,
@@ -52,7 +54,7 @@ export function SubRing({
       .slice(0, MAX_FOLDER_CHILDREN),
     [parent.children]
   );
-  const layout = useSubRingGeometry(children.length);
+  const layout = useSubRingGeometry(children.length, getActionBubbleSize(ringSize));
   const positions = layout.children;
   const nestedParentPosition = layout.parent;
   const axis = layout.axis;
@@ -91,37 +93,23 @@ export function SubRing({
       return;
     }
 
-    const centerX = nestedParentPosition.x;
-    const centerY = nestedParentPosition.y;
     const mouse = { x: 0, y: 0, pending: false };
     let rafId = 0;
 
     function processHover(): void {
       mouse.pending = false;
-      const scale = RING_SIZE_SCALE[ringSize];
-      const dx = mouse.x / scale - centerX;
-      const dy = mouse.y / scale - centerY;
-      if (Math.hypot(dx, dy) < HOVER_DEADZONE_RADIUS) {
-        setHoveredSubIndex(null);
-        return;
-      }
-
-      const cursorAngle = Math.atan2(dy, dx);
-      if (Math.abs(angleDelta(cursorAngle, axis)) > halfSpan) {
-        setHoveredSubIndex(null);
-        return;
-      }
-
-      let closestIndex = 0;
-      let smallestDifference = Infinity;
-      positions.forEach((position, index) => {
-        const difference = Math.abs(angleDelta(cursorAngle, position.angle));
-        if (difference < smallestDifference) {
-          smallestDifference = difference;
-          closestIndex = index;
-        }
-      });
-      setHoveredSubIndex(closestIndex);
+      const ring = ringRef.current;
+      const nextHoveredSubIndex = ring
+        ? resolveSubRingHover(
+          mouse,
+          ring.getBoundingClientRect(),
+          positions,
+          nestedParentPosition,
+          axis,
+          halfSpan,
+        )
+        : null;
+      setHoveredSubIndex((current) => current === nextHoveredSubIndex ? current : nextHoveredSubIndex);
     }
 
     function handleMouseMove(event: MouseEvent): void {
@@ -138,7 +126,7 @@ export function SubRing({
       cancelAnimationFrame(rafId);
       setHoveredSubIndex(null);
     };
-  }, [axis, halfSpan, isClosing, isVisible, nestedParentPosition.x, nestedParentPosition.y, positions, ringSize]);
+  }, [axis, halfSpan, isClosing, isVisible, nestedParentPosition, positions, ringRef]);
 
   const handleSelect = useCallback((config: BubbleConfig) => {
     if (!isClosing) onSelect(config);
@@ -221,8 +209,7 @@ export function SubRing({
           index={index}
           total={children.length}
           isClosing={isClosing}
-          labelMode="persistent"
-          labelSide="right"
+          labelMode="hover"
         />
       ))}
     </>

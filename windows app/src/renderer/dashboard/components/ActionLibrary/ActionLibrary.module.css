@@ -122,6 +122,23 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+.actionBadges { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+.actionBadges > span {
+  width: fit-content;
+  padding: 1px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  background: var(--bg-surface-raised);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.actionBadges .setupBadge {
+  border-color: var(--warning-border);
+  color: var(--warning);
+  background: var(--warning-muted);
+}
 .actionState { width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-muted); }
 
 .customButton,

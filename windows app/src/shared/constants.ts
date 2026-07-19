@@ -5,6 +5,15 @@
 /** Ring container width and height in pixels */
 export const RING_SIZE = 400;
 
+/**
+ * Unscaled transparent margin reserved around the ring for outward text pills.
+ * A wrapped 180px label beside the left/right bubble fits inside this margin.
+ */
+export const RING_LABEL_SAFE_PADDING = 152;
+
+/** Ring plus the label-safe margin on every side. */
+export const OVERLAY_STAGE_SIZE = RING_SIZE + RING_LABEL_SAFE_PADDING * 2;
+
 /** Distance from ring center to bubble center in pixels */
 export const BUBBLE_RADIUS = 120;
 
@@ -82,8 +91,15 @@ export const DEFAULT_ACCENT_COLOR = '#7b68ee';
 /** Accessible fill used by filled controls in the non-custom themes. */
 export const DEFAULT_ACCENT_FILL_COLOR = '#6350d8';
 
+/** Default background color for the ring's action bubbles (the classic dark slate). */
+export const DEFAULT_BUBBLE_COLOR = '#1e2128';
+
 /** The default theme used by new and existing configurations. Follows the OS light/dark preference. */
-export const DEFAULT_THEME: ThemeConfig = { mode: 'system', accentColor: DEFAULT_ACCENT_COLOR };
+export const DEFAULT_THEME: ThemeConfig = {
+  mode: 'system',
+  accentColor: DEFAULT_ACCENT_COLOR,
+  bubbleColor: DEFAULT_BUBBLE_COLOR,
+};
 
 /** Visual scale for each PRD-defined ring-size preset. */
 export const RING_SIZE_SCALE: Record<RingSize, number> = {
@@ -92,9 +108,24 @@ export const RING_SIZE_SCALE: Record<RingSize, number> = {
   large: 1.2,
 };
 
+/**
+ * Action-bubble diameters before the ring preset scale is applied. Medium gets
+ * a slightly roomier target without changing the centre close control.
+ */
+export const ACTION_BUBBLE_SIZE: Record<RingSize, number> = {
+  small: BUBBLE_SIZE,
+  medium: 60,
+  large: BUBBLE_SIZE,
+};
+
+/** Returns the unscaled action-bubble diameter for a ring-size preset. */
+export function getActionBubbleSize(ringSize: RingSize): number {
+  return ACTION_BUBBLE_SIZE[ringSize];
+}
+
 /** Returns the transparent overlay size required for a ring-size preset. */
 export function getOverlayWindowSize(ringSize: RingSize): number {
-  return Math.round(RING_SIZE * RING_SIZE_SCALE[ringSize]);
+  return Math.round(OVERLAY_STAGE_SIZE * RING_SIZE_SCALE[ringSize]);
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +133,7 @@ export function getOverlayWindowSize(ringSize: RingSize): number {
 // ---------------------------------------------------------------------------
 
 /** Default overlay window size (the medium ring). */
-export const OVERLAY_WINDOW_SIZE = RING_SIZE;
+export const OVERLAY_WINDOW_SIZE = OVERLAY_STAGE_SIZE;
 
 /** Dashboard window width */
 export const DASHBOARD_WIDTH = 1280;

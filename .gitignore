@@ -28,3 +28,7 @@ __pycache__/
 .codex/
 .planning/
 prd/
+
+# Installer .exe — too large for GitHub (100MB limit); distribute via GitHub Releases instead
+*.exe
+*.blockmap

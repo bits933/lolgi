@@ -30,6 +30,35 @@ export function computeGroupDotAngle(position: BubblePosition): number {
   return Math.atan2(Math.sin(position.angle), Math.cos(position.angle));
 }
 
+export type RadialLabelSide = 'above' | 'right' | 'below' | 'left';
+
+/**
+ * Places a label on the bubble edge facing away from its radial origin.
+ *
+ * Only bubbles that are nearly vertical use above/below. Diagonal bubbles use
+ * left/right so a wide pill cannot cross neighbouring top/bottom bubbles. The
+ * position angle may originate at the main ring center or a sub-ring parent.
+ */
+export function computeRadialLabelSide(position: BubblePosition): RadialLabelSide {
+  const x = Math.cos(position.angle);
+  const y = Math.sin(position.angle);
+  const isNearlyVertical = Math.abs(x) < 0.35;
+
+  if (isNearlyVertical) return y < 0 ? 'above' : 'below';
+  return x < 0 ? 'left' : 'right';
+}
+
+/**
+ * Nudges diagonal side labels farther along their outward vertical direction.
+ * Eight pixels clears neighbouring bubbles while preserving the close visual
+ * relationship between pill and bubble.
+ */
+export function computeRadialLabelOffsetY(position: BubblePosition): number {
+  const side = computeRadialLabelSide(position);
+  if (side !== 'left' && side !== 'right') return 0;
+  return Math.sign(Math.sin(position.angle)) * 8;
+}
+
 const DEG_TO_RAD = Math.PI / 180;
 
 /**

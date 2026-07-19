@@ -1,4 +1,5 @@
-import type { AppConfig, ForegroundAppInfo, RingProfile } from '../shared/types';
+import { randomUUID } from 'crypto';
+import type { AppConfig, ForegroundAppInfo, ForegroundWindowTarget, RingProfile } from '../shared/types';
 import { resolveProfile } from '../shared/profileUtils';
 
 interface ManualOverrideState {
@@ -8,13 +9,52 @@ interface ManualOverrideState {
 
 let manualOverride: ManualOverrideState | null = null;
 let ringForegroundApp: ForegroundAppInfo | null = null;
+let activeRingSession: { id: string; target: ForegroundWindowTarget | null } | null = null;
 
+/** @deprecated Prefer beginRingSession, which binds the app to an opaque session. */
 export function setRingForegroundApp(foregroundApp: ForegroundAppInfo | null): void {
   ringForegroundApp = foregroundApp;
 }
 
 export function getRingForegroundApp(): ForegroundAppInfo | null {
   return ringForegroundApp;
+}
+
+export function beginRingSession(
+  target: ForegroundWindowTarget | null
+): { id: string; target: ForegroundWindowTarget | null } {
+  const targetSnapshot = target ? Object.freeze({ ...target }) : null;
+  const id = randomUUID();
+  activeRingSession = { id, target: targetSnapshot };
+  ringForegroundApp = targetSnapshot;
+  return { id, target: targetSnapshot ? { ...targetSnapshot } : null };
+}
+
+export function isRingSessionCurrent(sessionId: string | null | undefined): boolean {
+  return Boolean(sessionId && activeRingSession?.id === sessionId);
+}
+
+/**
+ * Resolve a target only when the caller presents the currently active session.
+ * A delayed action from an older ring therefore fails closed.
+ */
+export function getRingSessionTarget(
+  sessionId: string | null | undefined
+): ForegroundWindowTarget | null {
+  if (!isRingSessionCurrent(sessionId) || !activeRingSession?.target) return null;
+  return { ...activeRingSession.target };
+}
+
+/** End only the matching session, so a delayed close cannot invalidate a new ring. */
+export function endRingSession(sessionId: string | null | undefined): void {
+  if (!isRingSessionCurrent(sessionId)) return;
+  activeRingSession = null;
+  ringForegroundApp = null;
+}
+
+export function endActiveRingSession(): void {
+  activeRingSession = null;
+  ringForegroundApp = null;
 }
 
 export function setManualProfileOverride(profileId: string, foregroundApp: ForegroundAppInfo | null): void {

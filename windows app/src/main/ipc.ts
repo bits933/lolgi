@@ -1,9 +1,11 @@
-import { app, ipcMain, dialog } from 'electron';
+import { app, ipcMain, dialog, BrowserWindow } from 'electron';
 import {
   ACTION_EXECUTE,
   ACTION_GET_DIAGNOSTICS,
+  BUILD_IDENTITY_GET,
+  DIAGNOSTICS_GET_RECENT,
+  DIAGNOSTICS_COPY_LAST,
   OVERLAY_CLOSE,
-  OVERLAY_OUTSIDE_CLICK,
   OVERLAY_ANIMATION_COMPLETE,
   SYSTEM_GET_STATE,
   CONFIG_GET_BUBBLES,
@@ -27,7 +29,6 @@ import {
   PROFILE_V2_SET_GLOBAL,
   DASHBOARD_SET_DIRTY,
   DASHBOARD_CLOSE_APPROVE,
-  CONFIG_UPDATED,
   PROFILE_GET_ALL,
   PROFILE_ADD,
   PROFILE_UPDATE,
@@ -43,7 +44,16 @@ import {
   APP_EXTRACT_ICON,
   APP_FETCH_URL_ICON,
 } from '../shared/ipcChannels';
-import type { ActionExecutePayload, AppProfile, BubbleConfig, RingProfile, RingSize, ThemeConfig } from '../shared/types';
+import type {
+  ActionExecutePayload,
+  ActionResult,
+  AppProfile,
+  BubbleConfig,
+  ForegroundWindowTarget,
+  RingProfile,
+  RingSize,
+  ThemeConfig,
+} from '../shared/types';
 import { dispatchAction, getSystemState } from './actions/index';
 import { requiresForegroundInput } from './actions/system';
 import {
@@ -72,40 +82,69 @@ import {
   removeProfile,
   setSelectedGlobalProfile,
 } from './store';
-import { approveDashboardClose, completeOverlayClose, dismissOverlayFromOutsideClick, hideOverlay, getDashboardWindow, getOverlayWindow, scheduleOverlayHideFallback, setDashboardDirty, showOverlay } from './windows';
+import {
+  approveDashboardClose,
+  completeOverlayClose,
+  getDashboardWindow,
+  getOverlayWindow,
+  hideOverlay,
+  scheduleOverlayHideFallback,
+  setDashboardDirty,
+  showOverlay,
+  suppressOverlayBlurDismissal,
+} from './windows';
 import { registerHotkey, unregisterHotkey } from './globalShortcut';
 import { updateTrayMenu } from './tray';
 import { getForegroundApp, listRunningApps, listInstalledApps, listAllApps, setForegroundPollingBusy } from './utils/foregroundApp';
 import { extractAppIcon } from './utils/appIcon';
 import { fetchUrlIcon } from './utils/urlIcon';
-import { getRecentActionResults } from './actions/diagnostics';
+import {
+  copyLastCorrelatedDiagnostic,
+  getRecentActionResults,
+  getRecentDiagnosticEvents,
+  recordActionResult,
+} from './actions/diagnostics';
+import { getRuntimeBuildIdentity } from './buildIdentity';
+import {
+  endRingSession,
+  getRingSessionTarget,
+  isRingSessionCurrent,
+} from './profileRuntime';
 
 /**
- * Hide the overlay and wait for Windows to actually hand keyboard focus back to
- * the app beneath it, instead of guessing a fixed delay. A fixed delay that's
- * too short on a slower machine dispatches the action before focus has really
- * moved, so the input is lost or the now-invisible overlay keeps holding focus.
- * `blur` fires as soon as the OS completes the handoff; the timeout is only a
- * safety net for when the overlay never held focus to begin with.
+ * Milliseconds to let Windows re-activate the app beneath the ring after we make
+ * the overlay non-focusable, before we synthesize input into it. The overlay
+ * grabs keyboard focus when it opens (`showOverlay` calls `.focus()`), so every
+ * action that types into the app under it must hand that focus back first. This
+ * is the value the wheel-driven adjustment path has always used successfully.
  */
-function hideOverlayAndWaitForBlur(overlay: Electron.BrowserWindow | null): Promise<void> {
-  return new Promise((resolve) => {
-    if (!overlay || overlay.isDestroyed() || !overlay.isFocused()) {
-      hideOverlay();
-      resolve();
-      return;
-    }
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(safety);
-      resolve();
-    };
-    overlay.once('blur', finish);
-    const safety = setTimeout(finish, 150);
-    hideOverlay();
+const FOREGROUND_HANDOFF_MS = 45;
+
+function addRejectedActionDiagnostic(
+  payload: ActionExecutePayload,
+  result: ActionResult,
+  target: ForegroundWindowTarget | null
+): ActionResult {
+  const event = recordActionResult(payload.actionType, result, 0, {
+    correlationId: payload.ringSessionId,
+    phase: 'rejected-before-dispatch',
+    definitionId: payload.definitionId,
+    bubbleId: payload.bubbleId,
+    target: target
+      ? {
+          hwnd: target.windowHandle,
+          pid: target.processId,
+          processName: target.processName,
+          executablePath: target.executablePath,
+        }
+      : undefined,
   });
+  const diagnosticId = event.eventId.slice(0, 8);
+  return {
+    ...result,
+    diagnosticId,
+    message: `${result.message ?? result.error ?? 'The action was rejected.'} Diagnostic ${diagnosticId}.`,
+  };
 }
 
 export function registerIpcHandlers(): void {
@@ -115,30 +154,83 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(ACTION_EXECUTE, async (_event, payload: ActionExecutePayload) => {
     const overlay = getOverlayWindow();
-    const restoreBounds = !payload.keepOpen && overlay?.isVisible() ? overlay.getBounds() : null;
-    const requiresForegroundFocus = requiresForegroundInput(payload.actionType) ||
-      ['keyboard-shortcut', 'keyboard-sequence'].includes(payload.actionType);
-    const needsForegroundFocus = Boolean(payload.keepOpen && overlay?.isVisible() && requiresForegroundFocus);
-    if (restoreBounds) {
-      if (requiresForegroundFocus) {
-        await hideOverlayAndWaitForBlur(overlay);
-      } else {
-        // Non-keyboard actions can begin immediately once the overlay is gone.
-        // Their dispatch does not depend on Windows assigning focus elsewhere.
+    const overlayVisible = Boolean(overlay && !overlay.isDestroyed() && overlay.isVisible());
+    const restoreBounds = !payload.keepOpen && overlayVisible ? overlay!.getBounds() : null;
+    const needsTarget = requiresForegroundInput(payload.actionType);
+    const sessionIsCurrent = isRingSessionCurrent(payload.ringSessionId);
+    const sessionTarget = getRingSessionTarget(payload.ringSessionId);
+
+    // The preload attaches the opaque ID from ring:open. Reject delayed renderer
+    // work from a previous ring before it can launch anything or synthesize input.
+    if (!sessionIsCurrent) {
+      const staleResult: ActionResult = {
+        status: 'target_unavailable',
+        success: false,
+        error: 'The ring session is no longer active.',
+        message: 'The ring session is no longer active.',
+      };
+      return addRejectedActionDiagnostic(payload, staleResult, sessionTarget);
+    }
+    if (needsTarget && !sessionTarget) {
+      const unavailableResult: ActionResult = {
+        status: 'target_unavailable',
+        success: false,
+        error: 'The application window captured when the ring opened is unavailable.',
+        message: 'The application window captured when the ring opened is unavailable.',
+      };
+      return addRejectedActionDiagnostic(payload, unavailableResult, sessionTarget);
+    }
+    // Any action that types into the app under the ring must first hand keyboard
+    // focus back to that app — the overlay stole it on open. Use the one hand-off
+    // that reliably works for BOTH keep-open adjustments and one-shot clicks: make
+    // the ring non-focusable (Windows re-activates the previously-active app),
+    // wait a beat for that hand-off to settle, and only then send input.
+    //
+    // The old one-shot path instead hid the ring and raced its `blur` event,
+    // dispatching before the target app was actually foreground again — so
+    // click-triggered shortcuts like Figma's Ctrl+G (group) were silently
+    // dropped, while wheel-driven zoom (which never takes focus) still worked.
+    const yieldForegroundFocus = Boolean(overlay && overlayVisible && requiresForegroundInput(payload.actionType));
+
+    let releaseBlurDismissal: (() => void) | null = null;
+    try {
+      if (yieldForegroundFocus && overlay) {
+        releaseBlurDismissal = suppressOverlayBlurDismissal();
+        overlay.setFocusable(false);
+        await new Promise((resolve) => setTimeout(resolve, FOREGROUND_HANDOFF_MS));
+        if (restoreBounds) {
+          // One-shot action: focus is now on the target app. Dismiss the ring; the
+          // hidden, non-focused overlay does not pull focus back off that app.
+          hideOverlay();
+          overlay.setFocusable(true); // ready to grab focus again on the next open
+        }
+        // Safety net: if any Action Ring window still holds focus, the synthesized
+        // keystroke would land on us instead of the target app. Nudge focus off it
+        // and give the OS a moment more before dispatch.
+        const stillFocused = BrowserWindow.getFocusedWindow();
+        if (stillFocused) {
+          stillFocused.blur();
+          await new Promise((resolve) => setTimeout(resolve, FOREGROUND_HANDOFF_MS));
+        }
+      } else if (restoreBounds) {
+        // Non-keyboard action (launch, URL, file…): the ring can go immediately.
         hideOverlay();
       }
-    } else if (needsForegroundFocus && overlay) {
-      // Keep the ring visible while returning keyboard input to the target app.
-      overlay.setFocusable(false);
-      await new Promise((resolve) => setTimeout(resolve, 35));
+    } catch (error) {
+      releaseBlurDismissal?.();
+      throw error;
     }
+
     setForegroundPollingBusy(true);
-    const result = await dispatchAction(payload).finally(() => {
+    const result = await dispatchAction(payload, { target: sessionTarget }).finally(() => {
       setForegroundPollingBusy(false);
-      if (needsForegroundFocus && overlay && !overlay.isDestroyed() && overlay.isVisible()) {
+      // Keep-open adjustments: return focus to the still-visible ring so it keeps
+      // receiving input for the next wheel tick or click.
+      if (yieldForegroundFocus && payload.keepOpen && overlay && !overlay.isDestroyed() && overlay.isVisible()) {
         overlay.setFocusable(true);
         overlay.focus();
       }
+      releaseBlurDismissal?.();
     });
     if (restoreBounds && !result.success) {
       showOverlay(restoreBounds.x, restoreBounds.y, restoreBounds.width);
@@ -147,17 +239,21 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(ACTION_GET_DIAGNOSTICS, () => getRecentActionResults());
+  ipcMain.handle(BUILD_IDENTITY_GET, () => getRuntimeBuildIdentity());
+  ipcMain.handle(DIAGNOSTICS_GET_RECENT, () => getRecentDiagnosticEvents());
+  ipcMain.handle(DIAGNOSTICS_COPY_LAST, () => copyLastCorrelatedDiagnostic());
 
-  ipcMain.on(OVERLAY_CLOSE, () => {
-    scheduleOverlayHideFallback();
+  ipcMain.on(OVERLAY_CLOSE, (_event, ringSessionId?: string) => {
+    const closeIsCurrent = isRingSessionCurrent(ringSessionId);
+    endRingSession(ringSessionId);
+    if (closeIsCurrent && ringSessionId) {
+      scheduleOverlayHideFallback(ringSessionId);
+    }
   });
 
-  ipcMain.on(OVERLAY_OUTSIDE_CLICK, () => {
-    dismissOverlayFromOutsideClick();
-  });
-
-  ipcMain.on(OVERLAY_ANIMATION_COMPLETE, () => {
-    completeOverlayClose();
+  ipcMain.on(OVERLAY_ANIMATION_COMPLETE, (_event, ringSessionId?: string) => {
+    endRingSession(ringSessionId);
+    completeOverlayClose(ringSessionId);
   });
 
   ipcMain.handle(SYSTEM_GET_STATE, async () => {
@@ -218,20 +314,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(CONFIG_SET_BUBBLES, (_event, bubbles: BubbleConfig[]) => {
     setBubbles(bubbles);
-    // Notify overlay if it is open
-    const overlay = getOverlayWindow();
-    if (overlay && overlay.isVisible()) {
-      overlay.webContents.send(CONFIG_UPDATED, bubbles);
-    }
     return { success: true };
   });
 
   ipcMain.handle(CONFIG_UPDATE_BUBBLE, (_event, { id, patch }: { id: string; patch: Partial<BubbleConfig> }) => {
     updateBubble(id, patch);
-    const overlay = getOverlayWindow();
-    if (overlay && overlay.isVisible()) {
-      overlay.webContents.send(CONFIG_UPDATED, getConfig().bubbles);
-    }
     return { success: true };
   });
 

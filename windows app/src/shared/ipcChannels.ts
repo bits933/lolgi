@@ -29,7 +29,6 @@ export const ACTION_GET_DIAGNOSTICS = 'action:get-diagnostics' as const;
 export const OVERLAY_CLOSE = 'overlay:close' as const;
 
 /** Desktop click catcher requests close for a click outside the overlay window */
-export const OVERLAY_OUTSIDE_CLICK = 'overlay:outside-click' as const;
 
 /** Exit animation finished; main can now call win.hide() */
 export const OVERLAY_ANIMATION_COMPLETE = 'overlay:animation-complete' as const;
@@ -39,6 +38,15 @@ export const SYSTEM_GET_STATE = 'system:get-state' as const;
 
 /** Request current bubble configs */
 export const CONFIG_GET_BUBBLES = 'config:get-bubbles' as const;
+
+/** Read immutable source metadata plus runtime executable/mode identity. */
+export const BUILD_IDENTITY_GET = 'build:get-identity' as const;
+
+/** Read the bounded, redacted ring/action diagnostic event buffer. */
+export const DIAGNOSTICS_GET_RECENT = 'diagnostics:get-recent' as const;
+
+/** Copy the most recent correlated diagnostic through Electron's clipboard. */
+export const DIAGNOSTICS_COPY_LAST = 'diagnostics:copy-last' as const;
 
 // --- Dashboard → Main ---
 

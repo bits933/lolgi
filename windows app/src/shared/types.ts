@@ -57,7 +57,16 @@ export type BubbleType = 'default' | 'toggle' | 'fill' | 'menu';
 export type RingSize = 'small' | 'medium' | 'large';
 
 /** Dashboard action-library category. */
-export type ActionCategory = 'system' | 'adjustments' | 'basic' | 'structural' | 'custom';
+export type ActionCategory = 'system' | 'adjustments' | 'basic' | 'structural' | 'app' | 'custom';
+
+/** App families with curated first-party action catalogs and profile presets. */
+export type SupportedAppId =
+  | 'photoshop'
+  | 'blender'
+  | 'resolve'
+  | 'premiere'
+  | 'after-effects'
+  | 'figma';
 
 /** Field metadata used by the action-specific toolbar. */
 export interface ActionEditorField {
@@ -86,8 +95,18 @@ export interface ActionDefinition {
   scrollDownAction?: string;
   editorFields: ActionEditorField[];
   searchTerms: string[];
-  availability?: 'available' | 'requires-plugin' | 'requires-device';
+  availability?: 'available' | 'requires-setup' | 'requires-plugin' | 'requires-device';
   unavailableReason?: string;
+  /** Supported app this action belongs to. Used to filter the app-action library. */
+  appId?: SupportedAppId;
+  /** One-time shortcut/keymap setup shown without disabling the action. */
+  setupInstructions?: string;
+  /**
+   * Whether this action's default binding has been confirmed live in the target
+   * application. 'unverified' surfaces a non-blocking "needs verification" badge
+   * in the dashboard editor. Undefined is treated as verified.
+   */
+  verification?: 'verified' | 'unverified';
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +125,27 @@ export interface ThemeConfig {
   mode: ThemeMode;
   /** Accent hex color. Only user-editable when mode === 'custom'; system/light/dark always use the fixed brand accent regardless of this stored value. */
   accentColor: string;
+  /** Background hex color for the ring's action bubbles. Independent of the light/dark/accent mode. */
+  bubbleColor: string;
+}
+
+/**
+ * Resolved bubble-surface colors derived from the user's chosen bubble color.
+ * Shared by both renderers so the dashboard preview and overlay ring stay identical.
+ */
+export interface BubbleSurfaceTokens {
+  /** Base bubble fill (the chosen background color). */
+  fill: string;
+  /** Slightly contrasted fill used on hover. */
+  surfaceHover: string;
+  /** Bubble border color. */
+  stroke: string;
+  /** Bubble border color on hover. */
+  borderHover: string;
+  /** Fill used for the "filled" portion of adjustment bubbles. */
+  adjustmentFill: string;
+  /** Icon/text color that stays readable on the chosen fill (auto light/dark). */
+  onSurface: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +155,8 @@ export interface ThemeConfig {
 /** Serialisable config for one bubble slot — stored in electron-store */
 export interface BubbleConfig {
   id: string;
+  /** Catalog definition used to create this bubble. Preserves app-action metadata in sub-rings. */
+  definitionId?: string;
   label: string;
   /** Lucide icon name, e.g. "Volume2", "Sun", "Camera" */
   iconName: string;
@@ -161,6 +203,15 @@ export interface ForegroundAppInfo {
   processName: string;
   executablePath: string;
   windowTitle: string;
+}
+
+/**
+ * Immutable identity of the exact foreground window captured when a ring opens.
+ * The HWND is a base-10 string so it cannot lose precision while crossing IPC.
+ */
+export interface ForegroundWindowTarget extends ForegroundAppInfo {
+  windowHandle: string;
+  processId: number;
 }
 
 /**
@@ -280,12 +331,16 @@ export interface AppConfig {
 
 /** Payload sent with ring:open */
 export interface RingOpenPayload {
+  /** Opaque ID binding every input action to the ring-open target snapshot. */
+  ringSessionId: string;
   /** Overlay window is 400×400; ring is always centered — no position needed */
   triggerMode: 'A' | 'B';
   ringSize: RingSize;
   accentColor: string;
   accentFillColor: string;
   accentForegroundColor: string;
+  /** Resolved bubble background/surface colors from the user's theme. */
+  bubbleSurface: BubbleSurfaceTokens;
   bubbles: BubbleConfig[];
   systemState: SystemState;
   /** The app profile that was matched, or null/undefined for defaults */
@@ -303,19 +358,36 @@ export interface SystemState {
 /** Payload sent when a bubble is activated in the overlay */
 export interface ActionExecutePayload {
   bubbleId: string;
+  /** Stable catalog definition used for diagnostics and preset traceability. */
+  definitionId?: string;
   actionType: ActionType;
+  /** Injected by the overlay preload; renderer code cannot choose another session. */
+  ringSessionId?: string;
   payload?: string;
   parameters?: Record<string, string | number | boolean>;
   /** Adjustment/toggle interactions execute without dismissing the overlay. */
   keepOpen?: boolean;
 }
 
+/** Auditable result returned by the same operation that focused and sent input. */
+export interface InputDispatchReceipt {
+  kind: 'chord' | 'text';
+  targetWindowHandle: string;
+  targetProcessId: number;
+  actualWindowHandle: string;
+  actualProcessId: number;
+  requestedInputCount: number;
+  sentInputCount: number;
+}
+
 /** Result of an action execution */
 export interface ActionResult {
-  status: 'success' | 'accepted' | 'unsupported' | 'validation_error' | 'permission_blocked' | 'execution_error';
+  status: 'success' | 'accepted' | 'unsupported' | 'validation_error' | 'permission_blocked' | 'target_unavailable' | 'execution_error';
   success: boolean;
   error?: string;
   message?: string;
+  /** Short, user-visible reference for the persisted failure diagnostic. */
+  diagnosticId?: string;
   /** Updated system state after the action, if applicable */
   newState?: Partial<SystemState>;
 }
@@ -345,6 +417,8 @@ export interface OverlayStore {
   accentColor: string;
   accentFillColor: string;
   accentForegroundColor: string;
+  /** Resolved bubble background/surface colors from the user's theme. */
+  bubbleSurface: BubbleSurfaceTokens;
   /** Per-bubble fill level (0..1) for non-system fill bubbles */
   bubbleFillLevels: Record<string, number>;
 

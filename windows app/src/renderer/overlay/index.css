@@ -4,7 +4,7 @@
   padding: 0;
 }
 
-/* Overlay window: 400×400 transparent background */
+/* Label-safe transparent overlay; the 400×400 ring is centered within it. */
 html, body, #root {
   width: 100%;
   height: 100%;

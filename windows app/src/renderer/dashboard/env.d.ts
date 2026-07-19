@@ -1,4 +1,6 @@
 import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
+import type { RuntimeBuildIdentity } from '../../shared/buildInfo';
+import type { DiagnosticCopyResult, DiagnosticEvent } from '../../shared/diagnostics';
 
 // CSS Modules
 declare module '*.module.css' {
@@ -17,6 +19,9 @@ export interface InstalledAppInfo {
 export interface DashboardElectronAPI {
   // --- Config reads ---
   getConfig: () => Promise<AppConfig>;
+  getBuildIdentity: () => Promise<RuntimeBuildIdentity>;
+  getRecentDiagnostics: () => Promise<DiagnosticEvent[]>;
+  copyLastDiagnostic: () => Promise<DiagnosticCopyResult>;
 
   // --- Config writes ---
   setHotkey: (hotkey: string) => Promise<{ success: boolean }>;

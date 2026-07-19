@@ -54,9 +54,19 @@
 .toggle input:checked + span::before { transform: translateX(18px); }
 .colorPicker { display: flex; align-items: center; gap: var(--space-2); color: var(--text-tertiary); font-family: 'Consolas', monospace; font-size: var(--fs-sm); }
 .colorPicker input { width: 34px; height: 34px; padding: 2px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; }
+.colorReset { height: var(--control-sm); padding: 0 var(--space-2); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); background: var(--bg-surface); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+.colorReset:hover { color: var(--text-primary); border-color: var(--border-hover); }
 .resetButton { height: var(--control-sm); padding: 0 var(--space-3); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); color: var(--danger); background: var(--danger-muted); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
-.aboutCard { padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); color: var(--accent); }
-.aboutCard > div { display: flex; flex-direction: column; }
+.aboutCard { padding: var(--space-4); display: flex; align-items: flex-start; gap: var(--space-3); color: var(--accent); }
+.aboutBody { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: var(--space-2); }
+.aboutHeading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.aboutHeading > div { min-width: 0; display: flex; flex-direction: column; }
+.buildDetails { min-width: 0; display: flex; flex-direction: column; gap: 3px; color: var(--text-tertiary); font-size: var(--fs-xs); }
+.buildDetails code { max-width: 100%; color: var(--text-secondary); font-family: 'Consolas', monospace; font-size: var(--fs-xs); overflow-wrap: anywhere; white-space: normal; }
+.diagnosticButton { min-height: var(--control-sm); padding: 0 var(--space-3); flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); background: var(--bg-surface); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+.diagnosticButton:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: var(--accent-muted); }
+.diagnosticButton:disabled { opacity: 0.55; cursor: wait; }
+.diagnosticStatus { color: var(--accent); font-size: var(--fs-xs); }
 .previewColumn { position: sticky; top: 0; padding: var(--space-4); }
 .previewHeading { display: flex; align-items: center; gap: var(--space-2); color: var(--accent); }
 .previewHeading span { display: flex; flex-direction: column; }

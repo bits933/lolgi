@@ -1,8 +1,28 @@
 import React, { forwardRef, useCallback, useEffect, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { ActionType, BubbleConfig, BubblePosition } from '../../../../shared/types';
-import { computeGroupDotAngle } from '../../../../shared/ringGeometry';
+import {
+  computeGroupDotAngle,
+  computeRadialLabelOffsetY,
+  computeRadialLabelSide,
+} from '../../../../shared/ringGeometry';
 import { useOverlayStore } from '../../store/overlayStore';
+import { createWheelDispatcher, type WheelDispatcher, type WheelDirection } from './wheelDispatcher';
+import {
+  clamp,
+  resolveStoredLevel,
+} from './waveFill';
+import {
+  applyInfiniteFillWheelTick,
+  getInfiniteFillSignedSteps,
+} from './infiniteFillRuntime';
+import {
+  createInfiniteFillControllerLifecycle,
+  createInfiniteFillAnimationController,
+  type InfiniteFillControllerLifecycle,
+  getInfiniteFillControllerIdentity,
+  type InfiniteFillAnimationController,
+} from './fillAnimationController';
 import styles from './Bubble.module.css';
 
 type AnyIconComponent = React.ComponentType<Record<string, unknown>>;
@@ -34,8 +54,8 @@ interface BubbleProps {
   isClosing: boolean;
   /** 'hover' (default) reveals the label on hover; 'persistent' keeps it always shown (sub-ring). */
   labelMode?: 'hover' | 'persistent';
-  /** Where a persistent label sits relative to the bubble. Ignored in hover mode. */
-  labelSide?: 'left' | 'right' | 'below';
+  /** Where a persistent label sits. 'radial' mirrors the main-ring outward placement. */
+  labelSide?: 'radial' | 'above' | 'left' | 'right' | 'below';
 }
 
 type FillSource = 'volume' | 'brightness' | 'custom';
@@ -53,10 +73,6 @@ function getFillSource(config: BubbleConfig): FillSource {
   return 'custom';
 }
 
-function clamp(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
-
 export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
   ({ config, position, isHovered, onSelect, onActionError, isVisible, index, total, isClosing, labelMode = 'hover', labelSide = 'below' }, ref) => {
     const fillSource = getFillSource(config);
@@ -65,15 +81,43 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
     const isMuted = useOverlayStore((state) => config.actionType === 'volume-mute' ? state.systemState.isMuted : false);
     const isPlaying = useOverlayStore((state) => config.actionType === 'media-play-pause' ? state.systemState.isPlaying : false);
     const updateSystemState = useOverlayStore((state) => state.updateSystemState);
-    const customFillLevel = useOverlayStore((state) => state.bubbleFillLevels[config.id] ?? 0.5);
+    const storedFillLevel = useOverlayStore((state) => state.bubbleFillLevels[config.id]);
     const setBubbleFillLevel = useOverlayStore((state) => state.setBubbleFillLevel);
     const clickInFlightRef = useRef(false);
     const systemAdjustmentFrameRef = useRef<number | null>(null);
     const pendingSystemAdjustmentRef = useRef<SystemAdjustmentRequest | null>(null);
+    const wheelDispatcherRef = useRef<WheelDispatcher | null>(null);
+    const dispatchCustomTickRef = useRef<(direction: WheelDirection) => Promise<void>>(() => Promise.resolve());
+    // The two physical layers have stable colors: A is color 1, B is color 2.
+    // Their transform/z-index targets are derived from the raw level, never from
+    // an animation-completion callback.
+    const layerARef = useRef<HTMLDivElement>(null);
+    const layerBRef = useRef<HTMLDivElement>(null);
+    const fillAnimationControllerRef = useRef<InfiniteFillAnimationController | null>(null);
+    const fillControllerLifecycleRef = useRef<InfiniteFillControllerLifecycle | null>(null);
+    if (fillControllerLifecycleRef.current === null) {
+      fillControllerLifecycleRef.current = createInfiniteFillControllerLifecycle(
+        (layerA, layerB) => createInfiniteFillAnimationController(layerA, layerB),
+      );
+    }
+    // The controller invalidates every replaced animation, so an old completion
+    // can never overwrite a newer visual frame.
+    const lastLevelRef = useRef<number>(storedFillLevel ?? 0);
+    const hasSyncedInfiniteFrameRef = useRef(false);
+
+    // Every scroll-adjustable bubble (volume, brightness, custom, and preset app
+    // adjustments like zoom/brush size) shows the same accumulating fill meter so
+    // they read as one consistent slider control.
+    const showFillMeter = config.type === 'fill';
+    // Relative-tick adjustments (brush size, zoom, scroll) have no readable
+    // absolute value, so their meter is unbounded: it loops instead of capping at
+    // 100%. Volume/brightness keep the real, bounded gauge.
+    const isInfinite = showFillMeter && (config.parameters?.appAdjustment === true || config.parameters?.unbounded === true);
+    const customFillLevel = storedFillLevel ?? 0.5;
     const isToggleActive =
       (config.type === 'toggle' && config.actionType === 'volume-mute' && isMuted) ||
       (config.type === 'toggle' && config.actionType === 'media-play-pause' && isPlaying);
-    const fillLevel = config.type !== 'fill'
+    const fillLevel = !showFillMeter
       ? 0
       : fillSource === 'volume'
         ? volumeLevel
@@ -81,6 +125,21 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
           ? brightnessLevel
           : customFillLevel;
     const fillPercent = Math.round(fillLevel * 100);
+    // Signed count of wheel steps since the ring opened — shown next to the label
+    // for infinite bubbles in place of a (meaningless) percentage.
+    const infiniteStep = Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))) / 100;
+    const netSteps = isInfinite ? getInfiniteFillSignedSteps(storedFillLevel ?? 0, infiniteStep) : 0;
+    const infiniteControllerIdentity = getInfiniteFillControllerIdentity({
+      bubbleId: config.id,
+      definitionId: config.definitionId,
+      actionType: config.actionType,
+      scrollUpAction: config.scrollUpAction,
+      scrollDownAction: config.scrollDownAction,
+      fillSource,
+      appAdjustment: config.parameters?.appAdjustment === true,
+      unbounded: config.parameters?.unbounded === true,
+      step: config.parameters?.step,
+    });
     const Icon = resolveIcon(isToggleActive && config.iconNameAlt ? config.iconNameAlt : config.iconName);
     const tx = position.x - 200;
     const ty = position.y - 200;
@@ -106,6 +165,7 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
         try {
           const result = await window.electronAPI.executeAction({
             bubbleId: config.id,
+            definitionId: config.definitionId,
             actionType: config.actionType,
             payload: config.payload,
             parameters: config.parameters,
@@ -124,13 +184,17 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
       }
 
       if (config.type === 'fill') {
-        const clickAction = String(config.parameters?.clickAction ?? 'do-nothing');
+        const configuredClickAction = String(config.parameters?.clickAction ?? '').trim();
+        const clickAction = configuredClickAction
+          || (config.payload?.trim() ? config.actionType : 'do-nothing');
         if (!clickAction || clickAction === 'do-nothing') return;
         clickInFlightRef.current = true;
         try {
           reportResult(await window.electronAPI.executeAction({
             bubbleId: config.id,
+            definitionId: config.definitionId,
             actionType: clickAction as ActionType,
+            payload: config.payload,
             parameters: config.parameters,
             keepOpen: true,
           }));
@@ -149,6 +213,7 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
     const dispatchSystemAdjustment = useCallback((request: SystemAdjustmentRequest) => {
       void window.electronAPI.executeAction({
         bubbleId: config.id,
+        definitionId: config.definitionId,
         actionType: request.action,
         parameters: request.parameters,
         keepOpen: true,
@@ -156,7 +221,7 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
         console.error('[Bubble] adjustment action failed:', error);
         onActionError('The adjustment service did not respond.');
       });
-    }, [config.id, onActionError, reportResult]);
+    }, [config.definitionId, config.id, onActionError, reportResult]);
 
     const flushSystemAdjustment = useCallback(() => {
       const request = pendingSystemAdjustmentRef.current;
@@ -172,75 +237,138 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
       }
     }, [flushSystemAdjustment]);
 
-    const performAdjustment = useCallback((increasing: boolean, multiplier = 1) => {
-      if (config.type !== 'fill') return;
-      const baseStep = Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))) / 100;
-      const signedStep = (increasing ? baseStep : -baseStep) * multiplier;
-      let targetLevel: number | undefined;
+    // A controller owns the two live Web Animations. Recreate it whenever this
+    // bubble changes identity/mode or leaves the ring, so an old ring session can
+    // never write into a reused DOM node after a close/reopen.
+    useEffect(() => {
+      const level = storedFillLevel ?? 0;
+      const controller = fillControllerLifecycleRef.current?.sync({
+        identity: infiniteControllerIdentity,
+        enabled: isInfinite && isVisible,
+        layerA: layerARef.current,
+        layerB: layerBRef.current,
+        initialLevel: level,
+      }) ?? null;
+      fillAnimationControllerRef.current = controller;
+      if (!controller) {
+        hasSyncedInfiniteFrameRef.current = false;
+        return;
+      }
+      lastLevelRef.current = level;
+      hasSyncedInfiniteFrameRef.current = true;
+    }, [infiniteControllerIdentity, isInfinite, isVisible]);
 
+    useEffect(() => () => {
+      fillControllerLifecycleRef.current?.clear();
+      fillAnimationControllerRef.current = null;
+      hasSyncedInfiniteFrameRef.current = false;
+    }, []);
+
+    // Store updates caused by the local wheel handler have already been applied
+    // to the controller. Other updates (ring reset, imported profile, or an
+    // external store write) intentionally snap to their deterministic frame.
+    useEffect(() => {
+      if (!isInfinite || !fillAnimationControllerRef.current) return;
+      const level = storedFillLevel ?? 0;
+      if (hasSyncedInfiniteFrameRef.current && level === lastLevelRef.current) return;
+      fillAnimationControllerRef.current.snap(level);
+      lastLevelRef.current = level;
+      hasSyncedInfiniteFrameRef.current = true;
+    }, [isInfinite, storedFillLevel]);
+
+    const performSystemAdjustment = useCallback((increasing: boolean) => {
+      // Volume/brightness fills track a real, persistent level: update the meter
+      // optimistically and coalesce the backing system action to one dispatch per
+      // animation frame (the last requested level wins).
+      const baseStep = Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))) / 100;
+      const signedStep = increasing ? baseStep : -baseStep;
+      let targetLevel: number;
       if (fillSource === 'volume') {
         targetLevel = clamp(useOverlayStore.getState().systemState.volumeLevel + signedStep);
         updateSystemState({ volumeLevel: targetLevel });
-      } else if (fillSource === 'brightness') {
+      } else {
         targetLevel = clamp(useOverlayStore.getState().systemState.brightnessLevel + signedStep);
         updateSystemState({ brightnessLevel: targetLevel });
-      } else {
-        const current = useOverlayStore.getState().bubbleFillLevels[config.id] ?? 0.5;
-        setBubbleFillLevel(config.id, clamp(current + signedStep));
       }
 
       const action = increasing ? config.scrollUpAction : config.scrollDownAction;
       if (!action) return;
-      const parameters = {
-        ...config.parameters,
-        step: Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))) * multiplier,
-        ...(targetLevel === undefined ? {} : { targetLevel }),
+      pendingSystemAdjustmentRef.current = {
+        action: action as ActionType,
+        parameters: {
+          ...config.parameters,
+          step: Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))),
+          targetLevel,
+        },
       };
-
-      if (targetLevel !== undefined) {
-        pendingSystemAdjustmentRef.current = {
-          action: action as ActionType,
-          parameters,
-        };
-        if (systemAdjustmentFrameRef.current === null) {
-          systemAdjustmentFrameRef.current = requestAnimationFrame(() => {
-            systemAdjustmentFrameRef.current = null;
-            flushSystemAdjustment();
-          });
-        }
-        return;
-      }
-
-      const repeats = targetLevel === undefined ? multiplier : 1;
-
-      for (let repeat = 0; repeat < repeats; repeat += 1) {
-        const request = SYSTEM_ACTIONS.has(action)
-          ? window.electronAPI.executeAction({
-              bubbleId: config.id,
-              actionType: action as ActionType,
-              parameters,
-              keepOpen: true,
-            })
-          : window.electronAPI.executeAction({
-              bubbleId: config.id,
-              actionType: 'keyboard-shortcut',
-              payload: action,
-              parameters,
-              keepOpen: true,
-            });
-        void request.then(reportResult).catch((error) => {
-          console.error('[Bubble] adjustment action failed:', error);
-          onActionError('The adjustment service did not respond.');
+      if (systemAdjustmentFrameRef.current === null) {
+        systemAdjustmentFrameRef.current = requestAnimationFrame(() => {
+          systemAdjustmentFrameRef.current = null;
+          flushSystemAdjustment();
         });
       }
-    }, [config, fillSource, flushSystemAdjustment, onActionError, reportResult, setBubbleFillLevel, updateSystemState]);
+    }, [config.parameters, config.scrollUpAction, config.scrollDownAction, fillSource, flushSystemAdjustment, updateSystemState]);
+
+    const dispatchCustomTick = useCallback((direction: WheelDirection): Promise<void> => {
+      const increasing = direction === 'up';
+      const action = increasing ? config.scrollUpAction : config.scrollDownAction;
+      if (!action) return Promise.resolve();
+      const parameters = {
+        ...config.parameters,
+        step: Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))),
+      };
+      const request = SYSTEM_ACTIONS.has(action)
+        ? window.electronAPI.executeAction({ bubbleId: config.id, definitionId: config.definitionId, actionType: action as ActionType, parameters, keepOpen: true })
+        : window.electronAPI.executeAction({ bubbleId: config.id, definitionId: config.definitionId, actionType: 'keyboard-shortcut', payload: action, parameters, keepOpen: true });
+      return request.then(reportResult).catch((error) => {
+        console.error('[Bubble] adjustment action failed:', error);
+        onActionError('The adjustment service did not respond.');
+      });
+    }, [config.definitionId, config.id, config.parameters, config.scrollUpAction, config.scrollDownAction, onActionError, reportResult]);
+
+    // Keep the dispatcher's callback current without recreating the dispatcher
+    // (which would drop its queue) on every config change.
+    dispatchCustomTickRef.current = dispatchCustomTick;
+
+    useEffect(() => {
+      const dispatcher = createWheelDispatcher((direction) => dispatchCustomTickRef.current(direction));
+      wheelDispatcherRef.current = dispatcher;
+      return () => {
+        dispatcher.dispose();
+        wheelDispatcherRef.current = null;
+      };
+    }, []);
 
     const handleWheel = useCallback((event: React.WheelEvent) => {
       if (config.type !== 'fill') return;
       event.preventDefault();
       event.stopPropagation();
-      performAdjustment(event.deltaY < 0);
-    }, [config.type, performAdjustment]);
+      if (event.deltaY === 0) return; // Ignore zero-delta events instead of treating them as "down".
+      const increasing = event.deltaY < 0;
+
+      if (fillSource === 'volume' || fillSource === 'brightness') {
+        performSystemAdjustment(increasing);
+        return;
+      }
+
+      // Custom / app-adjustment fills: move the meter immediately for visible
+      // feedback, then pace the backing keyboard actions through the bounded,
+      // ordered dispatcher.
+      const baseStep = Math.min(20, Math.max(1, Number(config.parameters?.step ?? 5))) / 100;
+      const defaultLevel = isInfinite ? 0 : 0.5;
+      const current = useOverlayStore.getState().bubbleFillLevels[config.id] ?? defaultLevel;
+      // Infinite fills go through the production wheel-to-fill seam: one logical
+      // update drives the counter, semantic frame, and animation controller.
+      // Bounded fills retain their existing clamped path.
+      const next = isInfinite
+        ? applyInfiniteFillWheelTick(fillAnimationControllerRef.current, current, increasing, baseStep).nextLevel
+        : resolveStoredLevel(current, increasing ? baseStep : -baseStep, false);
+      setBubbleFillLevel(config.id, next);
+      if (isInfinite) {
+        lastLevelRef.current = next;
+      }
+      wheelDispatcherRef.current?.push(increasing ? 'up' : 'down');
+    }, [config.type, config.id, config.parameters, fillSource, isInfinite, performSystemAdjustment, setBubbleFillLevel]);
 
     const classList = [styles.bubble];
     if (isVisible) classList.push(styles.bubbleVisible);
@@ -250,17 +378,29 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
     if (config.type === 'menu') classList.push(styles.groupBubble);
 
     const labelClassList = [styles.label];
-    if (labelMode === 'persistent') {
-      labelClassList.push(styles.labelPersistent);
-      if (labelSide === 'right') labelClassList.push(styles.labelSideRight);
-      else if (labelSide === 'left') labelClassList.push(styles.labelSideLeft);
-    }
+    if (labelMode === 'persistent') labelClassList.push(styles.labelPersistent);
+
+    // Radial labels follow the outward edge defined by the bubble's position
+    // angle. Main-ring hover labels use this automatically; persistent sub-ring
+    // labels can opt into the exact same placement with labelSide="radial".
+    const usesRadialLabelPlacement = labelMode === 'hover' || labelSide === 'radial';
+    const resolvedLabelSide = usesRadialLabelPlacement
+      ? computeRadialLabelSide(position)
+      : labelSide;
+    if (resolvedLabelSide === 'above') labelClassList.push(styles.labelSideAbove);
+    else if (resolvedLabelSide === 'right') labelClassList.push(styles.labelSideRight);
+    else if (resolvedLabelSide === 'left') labelClassList.push(styles.labelSideLeft);
+    else labelClassList.push(styles.labelSideBelow);
 
     const baseIconColor = isToggleActive ? 'var(--ring-on-accent)' : 'var(--bubble-icon)';
     let displayLabel = config.label;
     if (config.actionType === 'volume-mute') displayLabel = isMuted ? 'Unmute' : 'Mute';
     else if (config.actionType === 'media-play-pause') displayLabel = isPlaying ? 'Pause' : 'Play';
-    else if (config.type === 'fill') displayLabel = `${config.label} ${fillPercent}%`;
+    else if (isInfinite) displayLabel = netSteps === 0 ? config.label : `${config.label} ${netSteps > 0 ? '+' : ''}${netSteps}`;
+    else if (
+      showFillMeter
+      && (fillSource !== 'custom' || config.parameters?.showNumericValue === true)
+    ) displayLabel = `${config.label} ${fillPercent}%`;
 
     return (
       <div
@@ -271,6 +411,7 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
           '--tx': `${tx}px`,
           '--ty': `${ty}px`,
           '--group-dot-angle': `${computeGroupDotAngle(position)}rad`,
+          '--label-outward-y': `${usesRadialLabelPlacement ? computeRadialLabelOffsetY(position) : 0}px`,
         } as React.CSSProperties}
         onClick={handleClick}
         onWheel={handleWheel}
@@ -281,16 +422,22 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
         aria-pressed={config.type === 'toggle' ? isToggleActive : undefined}
       >
         <div
-          className={`${styles.bubbleSurface}${config.type === 'fill' ? ` ${styles.fillSurface}` : ''}${config.type === 'menu' ? ` ${styles.groupSurface}` : ''}`}
-          style={config.type === 'fill' ? { '--fill-percent': `${fillPercent}%` } as React.CSSProperties : undefined}
+          className={`${styles.bubbleSurface}${showFillMeter && !isInfinite ? ` ${styles.fillSurface}` : ''}${isInfinite ? ` ${styles.infiniteSurface}` : ''}${config.type === 'menu' ? ` ${styles.groupSurface}` : ''}`}
+          style={showFillMeter && !isInfinite ? { '--fill-percent': `${fillPercent}%` } as React.CSSProperties : undefined}
         >
+          {isInfinite && (
+            <>
+              <div ref={layerARef} className={`${styles.fillLayer} ${styles.fillLayerA}`} aria-hidden="true" />
+              <div ref={layerBRef} className={`${styles.fillLayer} ${styles.fillLayerB}`} aria-hidden="true" />
+            </>
+          )}
           <span className={styles.icon}>
             {config.iconDataUrl ? (
               <img src={config.iconDataUrl} alt="" draggable={false} width={26} height={26} />
             ) : (
               <Icon size={24} color={baseIconColor} strokeWidth={2} />
             )}
-            {config.type === 'fill' && !config.iconDataUrl && (
+            {showFillMeter && !isInfinite && !config.iconDataUrl && (
               <div className={styles.iconOverlayWrapper} style={{ height: `${fillPercent}%` }}>
                 <div className={styles.iconOverlayInner}><Icon size={24} color="var(--bubble-icon)" strokeWidth={2} /></div>
               </div>
