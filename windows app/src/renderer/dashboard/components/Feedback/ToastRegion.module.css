@@ -1,0 +1,8 @@
+.region { position: fixed; z-index: 90; left: 50%; bottom: var(--space-4); width: min(420px, calc(100vw - 32px)); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); transform: translateX(-50%); pointer-events: none; }
+.toast { min-height: 40px; max-width: 100%; padding: var(--space-2) var(--space-4); display: flex; align-items: center; gap: var(--space-2); border: 1px solid var(--border-default); border-radius: var(--radius-pill); background: var(--bg-surface-raised); box-shadow: var(--shadow-elevated); color: var(--text-primary); font-size: var(--fs-sm); animation: toast-enter var(--transition-normal) both; pointer-events: auto; }
+.toast > span { min-width: 0; flex: 1; }
+.successIcon { flex: 0 0 auto; color: var(--success); }
+.toast button { width: 32px; height: 32px; margin: -4px -6px -4px 0; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-tertiary); cursor: pointer; }
+.toast button:hover { color: var(--text-primary); background: var(--bg-surface-hover); }
+@keyframes toast-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }

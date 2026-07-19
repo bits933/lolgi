@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import {
   Check,
@@ -8,6 +8,7 @@ import {
   LockKeyhole,
   Plus,
   Search,
+  Star,
   Trash2,
 } from 'lucide-react';
 import { ACTION_CATALOG } from '../../../../shared/actionCatalog';
@@ -18,6 +19,9 @@ import styles from './ActionLibrary.module.css';
 
 type AnyIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>;
 export type LibraryMode = 'actions' | 'bubbles';
+type ActionBrowseMode = 'browse' | 'favorites';
+
+const FAVORITE_ACTIONS_KEY = 'dashboard.action-library.favorites';
 
 const SECTIONS: Array<{ category: ActionCategory; label: string }> = [
   { category: 'system', label: 'System actions' },
@@ -52,49 +56,65 @@ interface ActionLibraryProps {
 function ActionCard({
   definition,
   selected,
+  favorite,
   onSelect,
+  onToggleFavorite,
 }: {
   definition: ActionDefinition;
   selected: boolean;
+  favorite: boolean;
   onSelect: () => void;
+  onToggleFavorite: () => void;
 }): React.ReactElement {
   const Icon = resolveIcon(definition.iconName);
   const unavailable = definition.availability === 'requires-device' || definition.availability === 'requires-plugin';
   const requiresSetup = definition.availability === 'requires-setup';
 
   return (
-    <button
-      type="button"
-      className={`${styles.actionCard}${selected ? ` ${styles.actionCardSelected}` : ''}${unavailable ? ` ${styles.actionCardDisabled}` : ''}`}
-      onClick={onSelect}
-      draggable={!unavailable}
-      disabled={unavailable}
-      title={unavailable
-        ? definition.unavailableReason
-        : requiresSetup
-          ? `${definition.label}: one-time shortcut setup required`
-          : `Add ${definition.label}`}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('application/x-action-definition', definition.id);
-      }}
-    >
-      <span className={styles.actionGrip}><GripVertical size={13} /></span>
-      <span className={styles.actionIcon}><Icon size={18} strokeWidth={1.9} /></span>
-      <span className={styles.actionCopy}>
-        <strong>{definition.label}</strong>
-        <small>{definition.description}</small>
-        {(definition.appId || requiresSetup) && (
-          <span className={styles.actionBadges}>
-            {definition.appId && <span>{SUPPORTED_APP_LABELS[definition.appId]}</span>}
-            {requiresSetup && <span className={styles.setupBadge}>Needs 1-min setup</span>}
-          </span>
-        )}
-      </span>
-      <span className={styles.actionState}>
-        {unavailable ? <LockKeyhole size={13} /> : selected ? <Check size={14} /> : <Plus size={14} />}
-      </span>
-    </button>
+    <div className={styles.actionCardShell}>
+      <button
+        type="button"
+        className={`${styles.actionCard}${selected ? ` ${styles.actionCardSelected}` : ''}${unavailable ? ` ${styles.actionCardDisabled}` : ''}`}
+        onClick={onSelect}
+        draggable={!unavailable}
+        disabled={unavailable}
+        title={unavailable
+          ? definition.unavailableReason
+          : requiresSetup
+            ? `${definition.label}: one-time shortcut setup required`
+            : `Add ${definition.label}`}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = 'copy';
+          event.dataTransfer.setData('application/x-action-definition', definition.id);
+        }}
+      >
+        <span className={styles.actionGrip}><GripVertical size={13} /></span>
+        <span className={styles.actionIcon}><Icon size={18} strokeWidth={1.9} /></span>
+        <span className={styles.actionCopy}>
+          <strong>{definition.label}</strong>
+          <small>{definition.description}</small>
+          {(definition.appId || requiresSetup) && (
+            <span className={styles.actionBadges}>
+              {definition.appId && <span>{SUPPORTED_APP_LABELS[definition.appId]}</span>}
+              {requiresSetup && <span className={styles.setupBadge}>Needs 1-min setup</span>}
+            </span>
+          )}
+        </span>
+        <span className={styles.actionState}>
+          {unavailable ? <LockKeyhole size={13} /> : selected ? <Check size={14} /> : <Plus size={14} />}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={`${styles.favoriteButton}${favorite ? ` ${styles.favoriteButtonActive}` : ''}`}
+        onClick={onToggleFavorite}
+        aria-label={favorite ? `Remove ${definition.label} from favorites` : `Add ${definition.label} to favorites`}
+        aria-pressed={favorite}
+        title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Star size={14} fill={favorite ? 'currentColor' : 'none'} />
+      </button>
+    </div>
   );
 }
 
@@ -236,6 +256,15 @@ export function ActionLibrary({
   onRemoveChild,
 }: ActionLibraryProps): React.ReactElement {
   const [query, setQuery] = useState('');
+  const [browseMode, setBrowseMode] = useState<ActionBrowseMode>('browse');
+  const [favoriteActionIds, setFavoriteActionIds] = useState<Set<string>>(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(FAVORITE_ACTIONS_KEY) ?? '[]');
+      return new Set(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [openSections, setOpenSections] = useState<Set<ActionCategory>>(() => new Set(['system', 'app']));
   const sortedSlots = [...profile.slots].sort((a, b) => a.position - b.position);
   const supportedAppId = getSupportedAppId(profile.application?.processName);
@@ -245,12 +274,30 @@ export function ActionLibrary({
     return ACTION_CATALOG.filter((definition) => definition.category !== 'custom')
       .filter((definition) => definition.category !== 'app' || definition.appId === supportedAppId)
       .filter((definition) => folderChildren === null || definition.bubbleType !== 'menu')
+      .filter((definition) => browseMode === 'browse' || favoriteActionIds.has(definition.id))
       .filter((definition) => {
         if (!normalizedQuery) return true;
         return [definition.label, definition.description, ...definition.searchTerms]
           .some((term) => term.toLowerCase().includes(normalizedQuery));
       });
-  }, [folderChildren, query, supportedAppId]);
+  }, [browseMode, favoriteActionIds, folderChildren, query, supportedAppId]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FAVORITE_ACTIONS_KEY, JSON.stringify([...favoriteActionIds]));
+    } catch {
+      // Favorites remain available for this session if renderer storage is unavailable.
+    }
+  }, [favoriteActionIds]);
+
+  const toggleFavorite = (definitionId: string) => {
+    setFavoriteActionIds((current) => {
+      const next = new Set(current);
+      if (next.has(definitionId)) next.delete(definitionId);
+      else next.add(definitionId);
+      return next;
+    });
+  };
 
   const visibleSections = SECTIONS.map((section) => ({
     ...section,
@@ -303,9 +350,25 @@ export function ActionLibrary({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search actions"
+              placeholder="Search actions…"
               aria-label="Search actions"
             />
+          </div>
+          <div className={styles.browseSwitch} role="tablist" aria-label="Action library view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={browseMode === 'browse'}
+              className={browseMode === 'browse' ? styles.browseActive : ''}
+              onClick={() => setBrowseMode('browse')}
+            >Browse</button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={browseMode === 'favorites'}
+              className={browseMode === 'favorites' ? styles.browseActive : ''}
+              onClick={() => setBrowseMode('favorites')}
+            >Favorites <span>{favoriteActionIds.size}</span></button>
           </div>
           <div className={styles.actionList}>
             {visibleSections.map((section) => {
@@ -331,7 +394,9 @@ export function ActionLibrary({
                           key={definition.id}
                           definition={definition}
                           selected={selectedDefinitionId === definition.id}
+                          favorite={favoriteActionIds.has(definition.id)}
                           onSelect={() => onSelectDefinition(definition.id)}
+                          onToggleFavorite={() => toggleFavorite(definition.id)}
                         />
                       ))}
                     </div>
@@ -339,12 +404,18 @@ export function ActionLibrary({
                 </section>
               );
             })}
-            {visibleSections.length === 0 && <div className={styles.emptyResult}>No actions match this search.</div>}
+            {visibleSections.length === 0 && (
+              <div className={styles.emptyResult}>
+                {browseMode === 'favorites' && favoriteActionIds.size === 0
+                  ? 'No favorite actions yet. Star an action in Browse to keep it here.'
+                  : `No actions match “${query}”. Try a different keyword.`}
+              </div>
+            )}
           </div>
-          <button type="button" className={styles.customButton} onClick={() => onSelectDefinition('custom-action')}>
+          {browseMode === 'browse' && <button type="button" className={styles.customButton} onClick={() => onSelectDefinition('custom-action')}>
             <Plus size={17} />
             <span><strong>Add custom action</strong><small>Shortcut, macro, file, app, or URL</small></span>
-          </button>
+          </button>}
         </>
       ) : (
         <>

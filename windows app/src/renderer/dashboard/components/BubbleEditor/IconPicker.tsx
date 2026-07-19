@@ -50,8 +50,10 @@ const IconCell = React.memo(function IconCell({
   return (
     <button
       className={`${styles.iconBtn} ${isSelected ? styles.iconBtnSelected : ''}`}
+      type="button"
       onClick={() => onSelect(name)}
       title={name}
+      aria-pressed={isSelected}
     >
       <Icon size={20} />
       <span className={styles.iconLabel}>{name}</span>
@@ -77,9 +79,10 @@ export function IconPicker({ selectedIcon, onSelect }: IconPickerProps): React.R
       <div className={styles.searchRow}>
         <input
           className={styles.search}
-          placeholder="Search icons..."
+          placeholder="Search icons…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search icons"
         />
         <span className={styles.resultCount}>
           {query.trim() === ''
@@ -89,7 +92,7 @@ export function IconPicker({ selectedIcon, onSelect }: IconPickerProps): React.R
       </div>
       <div className={styles.grid}>
         {filtered.length === 0 ? (
-          <div className={styles.emptyState}>No icons match "{query}"</div>
+          <div className={styles.emptyState}>No icons match &ldquo;{query}&rdquo;. Try a shorter search.</div>
         ) : (
           filtered.map((name) => (
             <IconCell

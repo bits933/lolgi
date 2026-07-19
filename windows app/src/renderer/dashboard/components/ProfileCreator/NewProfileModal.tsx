@@ -235,7 +235,7 @@ export function NewProfileModal({
         <header className={styles.header}>
           <div>
             <span>Profile setup</span>
-            <h2 id="new-profile-title">Create a new profile</h2>
+            <h2 id="new-profile-title">New Profile</h2>
           </div>
           <button type="button" onClick={onCancel} aria-label="Close profile setup"><X size={18} /></button>
         </header>
@@ -346,6 +346,9 @@ export function NewProfileModal({
                           <strong>{app.displayName}</strong><small>{app.processName}.exe</small>
                         </button>
                       ))}
+                      {!loading && ((tab === 'running' && filteredRunning.length === 0) || (tab === 'installed' && filteredInstalled.length === 0)) && (
+                        <div className={styles.emptyApps}>No applications match this search. Try a shorter name or browse for an executable.</div>
+                      )}
                     </div>
                     <button type="button" className={styles.browseLink} onClick={handleBrowse}><FolderOpen size={13} /> Browse for executable</button>
                   </div>
@@ -381,7 +384,7 @@ export function NewProfileModal({
         {kind && (
           <footer className={styles.footer}>
             <button type="button" className={styles.cancelButton} onClick={onCancel}>Cancel</button>
-            <button type="button" className={styles.createButton} onClick={handleCreate} disabled={saving}>{saving ? 'Creating...' : 'Create profile'}</button>
+            <button type="button" className={styles.createButton} onClick={handleCreate} disabled={saving}>{saving ? 'Creating…' : 'Create Profile'}</button>
           </footer>
         )}
       </section>

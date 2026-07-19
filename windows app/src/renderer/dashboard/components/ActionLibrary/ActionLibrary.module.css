@@ -59,6 +59,43 @@
 .searchBox input { width: 100%; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: var(--fs-base); }
 .searchBox input::placeholder { color: var(--text-tertiary); }
 
+.browseSwitch {
+  padding: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface-raised);
+}
+
+.browseSwitch button {
+  height: var(--control-sm);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.browseSwitch button:hover:not(.browseActive) {
+  color: var(--text-primary);
+}
+
+.browseSwitch button span {
+  margin-left: var(--space-1);
+  font-size: var(--fs-xs);
+  opacity: 0.75;
+}
+
+.browseSwitch .browseActive {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
 .actionSection { display: flex; flex-direction: column; }
 .sectionHeader {
   width: 100%;
@@ -87,10 +124,14 @@
 .actionList,
 .bubbleList { min-height: 0; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); padding-right: 3px; }
 
+.actionCardShell {
+  position: relative;
+}
+
 .actionCard {
   width: 100%;
   min-height: 58px;
-  padding: var(--space-2);
+  padding: var(--space-2) 42px var(--space-2) var(--space-2);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -140,6 +181,27 @@
   background: var(--warning-muted);
 }
 .actionState { width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; color: var(--accent); background: var(--accent-muted); }
+.favoriteButton {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.favoriteButton:hover,
+.favoriteButtonActive {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
 
 .customButton,
 .addBubbleButton {

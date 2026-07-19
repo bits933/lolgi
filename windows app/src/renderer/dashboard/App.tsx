@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   CopyPlus,
@@ -28,6 +28,7 @@ import { ActionToolbar } from './components/ActionToolbar/ActionToolbar';
 import { GeneralSettings } from './components/General/GeneralSettings';
 import { NewProfileModal } from './components/ProfileCreator/NewProfileModal';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog/UnsavedChangesDialog';
+import { ToastRegion, type DashboardToast } from './components/Feedback/ToastRegion';
 import { useDashboardStore } from './store/dashboardStore';
 import { INITIAL_PROFILE_DRAFT, profileDraftReducer } from './store/profileDraftReducer';
 import { useConfig } from './hooks/useConfig';
@@ -82,6 +83,7 @@ export function App(): React.ReactElement {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<DashboardToast[]>([]);
   const [editingHeaderName, setEditingHeaderName] = useState(false);
   const [draft, dispatchDraft] = useReducer(profileDraftReducer, INITIAL_PROFILE_DRAFT);
   const draftRef = useRef(draft);
@@ -89,6 +91,14 @@ export function App(): React.ReactElement {
   const lastEditedSlotIdRef = useRef<string | null>(null);
   const wasToolbarOpenRef = useRef(false);
   draftRef.current = draft;
+
+  const showToast = useCallback((message: string, tone: DashboardToast['tone'] = 'neutral') => {
+    const toast = { id: Date.now() + Math.random(), message, tone };
+    setToasts((current) => [...current, toast].slice(-2));
+  }, []);
+  const dismissToast = useCallback((id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
 
   const { config, isLoading } = useConfig();
   useTheme();
@@ -198,6 +208,7 @@ export function App(): React.ReactElement {
     }
     const savedProfile = result.value ?? workingProfile;
     dispatchDraft({ type: 'saved', profile: savedProfile });
+    showToast('Profile saved.', 'success');
     if (folderView && savedProfile.slots.some((slot) => slot.id === folderView.parentSlotId && slot.assignment?.type === 'menu')) {
       dispatchDraft({ type: 'select-slot', slotId: folderView.parentSlotId });
     }
@@ -424,6 +435,7 @@ export function App(): React.ReactElement {
       setPage('profile');
       setSelectedProfileId(created.id);
       dispatchDraft({ type: 'load', profile: created });
+      showToast('Profile created.', 'success');
     }
     return result;
   };
@@ -465,34 +477,55 @@ export function App(): React.ReactElement {
     }
   };
 
-  const duplicateProfile = () => {
-    if (!workingProfile) return;
-    requestTransition((sourceProfile) => {
-      if (!sourceProfile) return;
+  const withProfileForMutation = (
+    profileId: string,
+    mutation: (profile: RingProfile) => void,
+  ) => {
+    const profile = profiles.find((item) => item.id === profileId);
+    if (!profile) return;
+    if (profile.id === workingProfile?.id) {
+      requestTransition((sourceProfile) => {
+        if (sourceProfile?.id === profile.id) mutation(sourceProfile);
+      });
+      return;
+    }
+    mutation(profile);
+  };
+
+  const duplicateProfileById = (profileId: string) => {
+    withProfileForMutation(profileId, (sourceProfile) => {
       const duplicate = cloneProfile(sourceProfile, profiles);
       void addProfile(duplicate).then((result) => {
-        if (result.status === 'ok') loadProfile(result.value ?? duplicate);
-        else setError(result.message ?? 'Could not duplicate this profile.');
+        if (result.status === 'ok') {
+          loadProfile(result.value ?? duplicate);
+          showToast('Profile duplicated.', 'success');
+        } else {
+          setError(result.message ?? 'Could not duplicate this profile.');
+        }
       });
     });
   };
 
-  const toggleProfile = () => {
-    if (!workingProfile || workingProfile.protected) return;
-    requestTransition((sourceProfile) => {
-      if (!sourceProfile || sourceProfile.protected) return;
+  const toggleProfileById = (profileId: string) => {
+    withProfileForMutation(profileId, (sourceProfile) => {
+      if (sourceProfile.protected) return;
       const next = { ...sourceProfile, enabled: !sourceProfile.enabled };
       void saveProfile(next).then((result) => {
-        if (result.status === 'ok') dispatchDraft({ type: 'saved', profile: result.value ?? next });
-        else setError(result.message ?? 'Could not update this profile.');
+        if (result.status === 'ok') {
+          if (sourceProfile.id === workingProfile?.id) {
+            dispatchDraft({ type: 'saved', profile: result.value ?? next });
+          }
+          showToast(next.enabled ? 'Profile enabled.' : 'Profile disabled.', 'success');
+        } else {
+          setError(result.message ?? 'Could not update this profile.');
+        }
       });
     });
   };
 
-  const deleteProfile = () => {
-    if (!workingProfile || workingProfile.protected) return;
-    requestTransition((sourceProfile) => {
-      if (!sourceProfile || sourceProfile.protected) return;
+  const deleteProfileById = (profileId: string) => {
+    withProfileForMutation(profileId, (sourceProfile) => {
+      if (sourceProfile.protected) return;
       if (!window.confirm(`Delete "${sourceProfile.name}"? This cannot be undone.`)) return;
       void removeProfile(sourceProfile.id).then((result) => {
         if (result.status !== 'ok') {
@@ -505,8 +538,48 @@ export function App(): React.ReactElement {
           setSelectedProfileId(general.id);
           dispatchDraft({ type: 'load', profile: general });
         }
+        showToast('Profile removed.', 'success');
       });
     });
+  };
+
+  const reorderProfiles = (sourceProfileId: string, targetProfileId: string) => {
+    if (sourceProfileId === targetProfileId) return;
+    requestTransition(() => {
+      const currentProfiles = [...(useDashboardStore.getState().config?.profiles ?? [])]
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const sourceIndex = currentProfiles.findIndex((profile) => profile.id === sourceProfileId);
+      const targetIndex = currentProfiles.findIndex((profile) => profile.id === targetProfileId);
+      if (sourceIndex < 0 || targetIndex < 0) return;
+
+      const reordered = [...currentProfiles];
+      const [source] = reordered.splice(sourceIndex, 1);
+      reordered.splice(targetIndex, 0, source);
+      const changed = reordered
+        .map((profile, sortOrder) => ({ ...profile, sortOrder }))
+        .filter((profile) => currentProfiles.find((item) => item.id === profile.id)?.sortOrder !== profile.sortOrder);
+
+      void (async () => {
+        for (const profile of changed) {
+          const result = await saveProfile(profile);
+          if (result.status !== 'ok') {
+            setError(result.message ?? 'Could not reorder profiles.');
+            return;
+          }
+          if (profile.id === workingProfile?.id) {
+            dispatchDraft({ type: 'saved', profile: result.value ?? profile });
+          }
+        }
+        showToast('Profiles reordered.', 'success');
+      })();
+    });
+  };
+
+  const moveProfile = (profileId: string, direction: 'up' | 'down') => {
+    const ordered = [...profiles].sort((a, b) => a.sortOrder - b.sortOrder);
+    const index = ordered.findIndex((profile) => profile.id === profileId);
+    const target = ordered[index + (direction === 'up' ? -1 : 1)];
+    if (target) reorderProfiles(profileId, target.id);
   };
 
   if (isLoading || !config || !workingProfile) {
@@ -519,11 +592,17 @@ export function App(): React.ReactElement {
         activePage={page}
         profiles={profiles}
         activeProfileId={selectedProfileId}
+        hasUnsavedChanges={draft.dirty}
         onSelectProfile={(id) => {
           const profile = profiles.find((item) => item.id === id);
           if (profile) openProfile(profile);
         }}
         onRenameProfile={renameProfileById}
+        onDuplicateProfile={duplicateProfileById}
+        onToggleProfile={toggleProfileById}
+        onRemoveProfile={deleteProfileById}
+        onMoveProfile={moveProfile}
+        onReorderProfiles={reorderProfiles}
         onAddProfile={() => requestTransition(() => setShowNewProfile(true))}
         onOpenSettings={openSettings}
       />
@@ -597,9 +676,9 @@ export function App(): React.ReactElement {
               <div className={styles.headerActions}>
                 <button type="button" onClick={() => dispatchDraft({ type: 'undo' })} disabled={draft.past.length === 0} title="Undo (Ctrl+Z)"><Undo2 size={15} /></button>
                 <button type="button" onClick={() => dispatchDraft({ type: 'redo' })} disabled={draft.future.length === 0} title="Redo (Ctrl+Y)"><Redo2 size={15} /></button>
-                <button type="button" onClick={duplicateProfile} title="Duplicate profile"><CopyPlus size={15} /></button>
-                {!workingProfile.protected && <button type="button" onClick={toggleProfile} title={workingProfile.enabled ? 'Disable profile' : 'Enable profile'}>{workingProfile.enabled ? <Power size={15} /> : <PowerOff size={15} />}</button>}
-                {!workingProfile.protected && <button type="button" className={styles.deleteAction} onClick={deleteProfile} title="Delete profile"><Trash2 size={15} /></button>}
+                <button type="button" onClick={() => duplicateProfileById(workingProfile.id)} title="Duplicate profile"><CopyPlus size={15} /></button>
+                {!workingProfile.protected && <button type="button" onClick={() => toggleProfileById(workingProfile.id)} title={workingProfile.enabled ? 'Disable profile' : 'Enable profile'}>{workingProfile.enabled ? <Power size={15} /> : <PowerOff size={15} />}</button>}
+                {!workingProfile.protected && <button type="button" className={styles.deleteAction} onClick={() => deleteProfileById(workingProfile.id)} title="Delete profile"><Trash2 size={15} /></button>}
                 {draft.dirty && <button type="button" className={styles.headerSave} onClick={() => void handleSave()} disabled={saving}><Save size={14} /> {saving ? 'Saving' : 'Save'}</button>}
               </div>
             </header>
@@ -695,6 +774,7 @@ export function App(): React.ReactElement {
 
       {pendingAction && (
         <UnsavedChangesDialog
+          profileName={workingProfile?.name || 'this profile'}
           saving={saving}
           error={error}
           onKeepEditing={() => {
@@ -718,6 +798,7 @@ export function App(): React.ReactElement {
           }}
         />
       )}
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
