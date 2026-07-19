@@ -27,7 +27,9 @@ __pycache__/
 .claude/
 .codex/
 .planning/
+.agents/
 prd/
+.opencode/
 
 # Installer .exe — too large for GitHub (100MB limit); distribute via GitHub Releases instead
 *.exe
