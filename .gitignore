@@ -32,3 +32,6 @@ prd/
 # Installer .exe — too large for GitHub (100MB limit); distribute via GitHub Releases instead
 *.exe
 *.blockmap
+
+# Local checkpoint notes â€” keep on this machine, never push to GitHub
+backups/
