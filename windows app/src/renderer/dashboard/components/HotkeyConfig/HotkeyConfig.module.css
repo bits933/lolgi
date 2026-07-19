@@ -34,6 +34,9 @@
   flex: 1;
   height: var(--control-md);
   padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -46,6 +49,27 @@
 .inputRecording {
   border-color: var(--accent);
   background: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+.recordingLabel {
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.keyChip {
+  min-width: 24px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  font-family: 'Consolas', ui-monospace, monospace;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
 }
 
 .button {

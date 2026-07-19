@@ -14,7 +14,7 @@
 .profileTitle span { color: var(--accent); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.2px; }
 .profileNameRow { min-width: 0; display: flex; align-items: center; gap: var(--space-1); }
 .profileTitle h1 { min-width: 0; overflow: hidden; color: var(--text-primary); font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.3px; text-overflow: ellipsis; white-space: nowrap; }
-.profileNameEditing { outline: none; border: 0; background: transparent; box-shadow: none; caret-color: var(--accent); cursor: text; user-select: text; }
+.profileNameEditing { border: 0; background: transparent; caret-color: var(--accent); cursor: text; user-select: text; }
 .renameProfileButton {
   width: 24px;
   height: 24px;

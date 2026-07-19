@@ -59,6 +59,7 @@
   --warning-border: rgba(253, 180, 78, 0.32);
   --success: #4ade80;
   --success-muted: rgba(74, 222, 128, 0.14);
+  --control-knob: #f0f1f3;
 
   /* Modal scrim */
   --overlay-scrim: rgba(0, 0, 0, 0.6);
@@ -142,6 +143,7 @@
   --warning-border: rgba(181, 71, 8, 0.28);
   --success: #157f3c;
   --success-muted: rgba(21, 127, 60, 0.1);
+  --control-knob: #ffffff;
 
   --overlay-scrim: rgba(17, 24, 39, 0.48);
 
@@ -172,17 +174,6 @@ html, body, #root {
 
 /* Text fields signal focus through their own border treatment (and the caret)
    — the outline ring on top reads as a stray double box. */
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: none;
-}
-
-/* Remove focus outline for mouse/touch */
-:focus:not(:focus-visible) {
-  outline: none;
-}
-
 /* Custom scrollbar — thin, unobtrusive */
 * {
   scrollbar-width: thin;

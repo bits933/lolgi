@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle } from 'lucide-react';
 import styles from './UnsavedChangesDialog.module.css';
 
 interface UnsavedChangesDialogProps {
+  profileName: string;
   saving: boolean;
   error?: string | null;
   onSave: () => void;
@@ -11,6 +12,7 @@ interface UnsavedChangesDialogProps {
 }
 
 export function UnsavedChangesDialog({
+  profileName,
   saving,
   error,
   onSave,
@@ -18,11 +20,11 @@ export function UnsavedChangesDialog({
   onKeepEditing,
 }: UnsavedChangesDialogProps): React.ReactElement {
   const dialogRef = useRef<HTMLElement>(null);
-  const keepEditingRef = useRef<HTMLButtonElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
-    keepEditingRef.current?.focus();
+    saveRef.current?.focus();
     return () => {
       if (previousFocus?.isConnected) previousFocus.focus();
     };
@@ -63,14 +65,14 @@ export function UnsavedChangesDialog({
       >
         <span className={styles.icon}><AlertTriangle size={22} /></span>
         <div className={styles.copy}>
-          <h2 id="unsaved-title">Save changes to this profile?</h2>
-          <p id="unsaved-description">Your ring edits are still a local draft. Leaving now without saving will restore the last saved layout.</p>
+          <h2 id="unsaved-title">Unsaved Changes</h2>
+          <p id="unsaved-description">You have unsaved changes to &lsquo;{profileName}&rsquo;. Save before closing?</p>
         </div>
         {error && <div id="unsaved-error" className={styles.error}><AlertCircle size={15} /><span>{error}</span></div>}
         <div className={styles.actions}>
-          <button ref={keepEditingRef} type="button" className={styles.keep} onClick={onKeepEditing}>Keep editing</button>
-          <button type="button" className={styles.discard} onClick={onDiscard} disabled={saving}>Discard</button>
-          <button type="button" className={styles.save} onClick={onSave} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
+          <button type="button" className={styles.keep} onClick={onKeepEditing}>Cancel</button>
+          <button type="button" className={styles.discard} onClick={onDiscard} disabled={saving}>Discard Changes</button>
+          <button ref={saveRef} type="button" className={styles.save} onClick={onSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </section>
     </div>

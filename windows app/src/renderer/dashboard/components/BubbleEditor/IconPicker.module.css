@@ -22,7 +22,7 @@
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
-.search:focus {
+.search:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-muted);
 }
@@ -70,7 +70,7 @@
   border: 1px solid var(--border-default);
   background: var(--bg-surface);
   cursor: pointer;
-  transition: all 150ms ease-out;
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
   color: var(--text-secondary);
   padding: 0;
 }

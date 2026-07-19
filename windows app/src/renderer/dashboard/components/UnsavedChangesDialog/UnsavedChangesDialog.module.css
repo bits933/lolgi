@@ -1,5 +1,5 @@
 .overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: var(--overlay-scrim); backdrop-filter: blur(8px); }
-.dialog { width: min(460px, calc(100vw - 32px)); padding: var(--space-6); display: grid; grid-template-columns: 44px 1fr; gap: var(--space-4); border: 1px solid var(--border-hover); border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--shadow-modal); }
+.dialog { width: min(420px, calc(100vw - 32px)); padding: var(--space-6); display: grid; grid-template-columns: 44px 1fr; gap: var(--space-4); border: 1px solid var(--warning-border); border-left: 2px solid var(--warning); border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--shadow-modal); }
 .icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--radius-md); color: var(--warning); background: var(--warning-muted); border: 1px solid var(--warning-border); }
 .copy h2 { color: var(--text-primary); font-size: var(--fs-md); font-weight: 700; letter-spacing: -0.2px; }
 .copy p { margin-top: var(--space-2); color: var(--text-tertiary); font-size: var(--fs-sm); line-height: var(--lh-normal); }

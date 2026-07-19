@@ -27,6 +27,12 @@ export function HotkeyConfig({ embedded = false }: { embedded?: boolean }): Reac
       e.preventDefault();
       e.stopPropagation();
 
+      if (e.key === 'Escape') {
+        setPendingKeys('');
+        setIsRecording(false);
+        return;
+      }
+
       const parts: string[] = [];
       if (e.ctrlKey) parts.push('Ctrl');
       if (e.altKey) parts.push('Alt');
@@ -56,14 +62,19 @@ export function HotkeyConfig({ embedded = false }: { embedded?: boolean }): Reac
       <div className={styles.section}>
         <div className={styles.label}>Global Hotkey</div>
         <div className={styles.recorder}>
-          <div className={`${styles.input} ${isRecording ? styles.inputRecording : ''}`}>
-            {isRecording
-              ? pendingKeys
-                ? pendingKeys + '...'
-                : 'Press keys...'
-              : currentHotkey}
+          <div
+            className={`${styles.input} ${isRecording ? styles.inputRecording : ''}`}
+            aria-live="polite"
+            aria-label={isRecording ? 'Recording shortcut' : `Current shortcut: ${currentHotkey}`}
+          >
+            {isRecording ? (
+              <span className={styles.recordingLabel}>{pendingKeys || 'Press shortcut…'}</span>
+            ) : (
+              currentHotkey.split('+').map((key) => <kbd className={styles.keyChip} key={key}>{key}</kbd>)
+            )}
           </div>
           <button
+            type="button"
             className={styles.button}
             onClick={isRecording ? () => setIsRecording(false) : handleStartRecording}
           >
@@ -71,7 +82,7 @@ export function HotkeyConfig({ embedded = false }: { embedded?: boolean }): Reac
           </button>
         </div>
         <div className={styles.hint}>
-          Press Ctrl, Shift, Alt in combination with a letter or function key.
+          Press Ctrl, Shift, or Alt with a key. Press Esc to cancel.
         </div>
       </div>
     </div>
