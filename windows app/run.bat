@@ -1,5 +1,5 @@
 @echo off
-title Logi Actions Ring - Build and Run
+title Lolgi Action Ring - Build and Run
 cd /d "%~dp0"
 
 REM Clear IDE variables that can force Electron to run as a Node process.
@@ -7,7 +7,7 @@ set ELECTRON_RUN_AS_NODE=
 set VSCODE_ESM_ENTRYPOINT=
 
 echo ========================================
-echo  Logi Actions Ring - Build and Launch
+echo  Lolgi Action Ring - Build and Launch
 echo ========================================
 echo.
 

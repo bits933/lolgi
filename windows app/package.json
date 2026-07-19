@@ -1,7 +1,7 @@
 {
   "name": "logi-actions-ring",
   "version": "1.0.1",
-  "description": "Logitech MX Actions Ring — Electron Desktop App",
+  "description": "Lolgi Action Ring — Electron Desktop App",
   "main": "dist/main-bundled.js",
   "scripts": {
     "dev": "npm run build:identity && concurrently \"npm run dev:overlay\" \"npm run dev:dashboard\" \"npm run dev:main\"",

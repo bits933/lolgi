@@ -237,7 +237,7 @@ export function createDashboardWindow(): BrowserWindow {
     minHeight: 680,
     frame: true,
     show: false,
-    title: 'Logi Actions Ring — Settings',
+    title: 'Lolgi Action Ring — Settings',
     webPreferences: {
       preload: join(__dirname, 'preload-dashboard.js'),
       contextIsolation: true,

@@ -16,7 +16,7 @@ const require = createRequire(import.meta.url);
 const asar = require('@electron/asar');
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, '..');
-const PRODUCT_NAME = 'Logi Actions Ring';
+const PRODUCT_NAME = 'Lolgi Action Ring';
 const MANIFEST_SCHEMA_VERSION = 1;
 
 function readJson(path, label) {

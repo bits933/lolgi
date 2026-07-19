@@ -39,7 +39,7 @@ async function createFixture() {
     sourceFingerprint: computeSourceFingerprint(root),
   };
   writeFixture(root, 'dist/build-info.json', `${JSON.stringify(build)}\n`);
-  writeFixture(root, 'release/Logi Actions Ring Setup 1.0.1.exe', 'fake installer bytes');
+  writeFixture(root, 'release/Lolgi Action Ring Setup 1.0.1.exe', 'fake installer bytes');
 
   const asarSource = join(root, 'asar-source');
   writeFixture(asarSource, 'dist/build-info.json', `${JSON.stringify(build)}\n`);
@@ -77,7 +77,7 @@ describe('release manifest', () => {
 
   it('rejects changed artifacts and changed source after packaging', async () => {
     const first = await createFixture();
-    writeFixture(first.root, 'release/Logi Actions Ring Setup 1.0.1.exe', 'tampered installer');
+    writeFixture(first.root, 'release/Lolgi Action Ring Setup 1.0.1.exe', 'tampered installer');
     expect(() => verifyReleaseManifest({
       root: first.root,
       manifestPath: first.manifestPath,

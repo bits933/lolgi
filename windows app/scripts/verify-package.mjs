@@ -83,7 +83,7 @@ export function findForbiddenEntries(entries) {
       /(^|\/)(win-unpacked|release)(\/|$)/i.test(entry)
       || /(^|\/)builder-(debug|effective-config)\.(ya?ml|json)$/i.test(entry)
       || /\.blockmap$/i.test(entry)
-      || /(^|\/)Logi Actions Ring Setup .+\.exe$/i.test(entry)
+      || /(^|\/)Lolgi Action Ring Setup .+\.exe$/i.test(entry)
       || /(^|\/)app\.asar$/i.test(entry)
     ));
 }

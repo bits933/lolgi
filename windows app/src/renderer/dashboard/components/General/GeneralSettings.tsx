@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { CircleDot, Copy, Info, Keyboard, MonitorCog, Power, RotateCcw, Sparkles } from 'lucide-react';
+import { CircleDot, Copy, Info, Keyboard, Power, RotateCcw, Sparkles } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_BUBBLE_COLOR } from '../../../../shared/constants';
-import { createEmptySlots, slotsToBubbles } from '../../../../shared/profileUtils';
+import { createEmptySlots } from '../../../../shared/profileUtils';
 import type { RingSize, ThemeConfig, ThemeMode } from '../../../../shared/types';
 import type { RuntimeBuildIdentity } from '../../../../shared/buildInfo';
 import { HotkeyConfig } from '../HotkeyConfig/HotkeyConfig';
-import { RingPreview } from '../RingPreview/RingPreview';
 import styles from './GeneralSettings.module.css';
 
 const RING_SIZE_OPTIONS: Array<{ value: RingSize; label: string; hint: string }> = [
@@ -155,7 +154,7 @@ export function GeneralSettings(): React.ReactElement {
           <section className={styles.card}>
             <div className={styles.cardHeading}><Power size={17} /><div><strong>Startup</strong><small>Windows session behavior</small></div></div>
             <div className={styles.row}>
-              <div><strong>Launch at startup</strong><small>Start Logi Actions Ring when you sign in to Windows.</small></div>
+              <div><strong>Launch at startup</strong><small>Start Lolgi Action Ring when you sign in to Windows.</small></div>
               <label className={styles.toggle}>
                 <input type="checkbox" checked={config.launchAtStartup} onChange={(event) => void setLaunchAtStartup(event.target.checked)} />
                 <span />
@@ -176,7 +175,7 @@ export function GeneralSettings(): React.ReactElement {
             <div className={styles.aboutBody}>
               <div className={styles.aboutHeading}>
                 <div>
-                  <strong>Logi Actions Ring {buildIdentity ? `v${buildIdentity.version}` : ''}</strong>
+                  <strong>Lolgi Action Ring {buildIdentity ? `v${buildIdentity.version}` : ''}</strong>
                   <small>Diagnostics and build identity</small>
                 </div>
                 <button
@@ -217,14 +216,6 @@ export function GeneralSettings(): React.ReactElement {
             </div>
           </section>
         </main>
-
-        <aside className={styles.previewColumn}>
-          <div className={styles.previewHeading}><MonitorCog size={16} /><span><strong>Live preview</strong><small>{generalProfile?.name ?? 'General'} fallback profile</small></span></div>
-          <div className={styles.previewFrame}>
-            <RingPreview bubbles={generalProfile ? slotsToBubbles(generalProfile.slots) : []} />
-          </div>
-          <p>Preview updates as soon as a profile is saved. Empty positions remain available in the profile editor.</p>
-        </aside>
       </div>
     </div>
   );

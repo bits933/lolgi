@@ -207,6 +207,12 @@
   border-radius: 5px;
 }
 
+.profileIconGlyph {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .profileName {
   overflow: hidden;
   color: inherit;

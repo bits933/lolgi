@@ -11,7 +11,7 @@ function run(cmd: string): void {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-console.log('[build] Building Logi Actions Ring...');
+console.log('[build] Building Lolgi Action Ring...');
 
 // 1. Compile main process TypeScript
 console.log('\n[1/3] Compiling main process...');

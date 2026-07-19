@@ -42,21 +42,21 @@ const gotLock = app.requestSingleInstanceLock({
 
 if (!gotLock) {
   const message = [
-    'Another Logi Actions Ring instance is already running and owns the global hotkey.',
+    'Another Lolgi Action Ring instance is already running and owns the global hotkey.',
     '',
     `Attempted build: ${formatRuntimeBuildIdentity(startupIdentity)}`,
     '',
     'Open the existing dashboard from the system tray or quit it before launching this build.',
   ].join('\n');
   console.warn(`[main] ${message.replace(/\n/g, ' ')}`);
-  dialog.showErrorBox('Logi Actions Ring is already running', message);
+  dialog.showErrorBox('Lolgi Action Ring is already running', message);
   app.exit(0);
 } else {
   startPrimaryInstance();
 }
 
 function startPrimaryInstance(): void {
-  console.log(`[main] Logi Actions Ring starting | ${formatRuntimeBuildIdentity(startupIdentity)}`);
+  console.log(`[main] Lolgi Action Ring starting | ${formatRuntimeBuildIdentity(startupIdentity)}`);
 
   app.on('second-instance', (_event, _argv, _workingDirectory, additionalData) => {
     const attempted = additionalData as Record<string, unknown>;
@@ -112,7 +112,7 @@ function startPrimaryInstance(): void {
     .catch((error) => {
       const message = error instanceof Error ? error.stack ?? error.message : String(error);
       console.error('[main] Startup failed:', message);
-      dialog.showErrorBox('Logi Actions Ring could not start', message);
+      dialog.showErrorBox('Lolgi Action Ring could not start', message);
       app.quit();
     });
 

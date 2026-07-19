@@ -41,12 +41,22 @@ describe('curated app profiles', () => {
     ]);
   });
 
-  it('creates fresh eight-bubble profiles with valid submenus', () => {
+  it('creates fresh application profiles with valid submenus', () => {
+    // Figma gained a second alignment submenu (Distribute) to keep every
+    // submenu at or under the 5-child cap; all other presets stay at eight.
+    const expectedSlotCounts: Record<SupportedAppId, number> = {
+      photoshop: 8,
+      blender: 8,
+      resolve: 8,
+      premiere: 8,
+      'after-effects': 8,
+      figma: 9,
+    };
     for (const preset of APP_PROFILE_PRESETS) {
       const profile = createAppProfileFromPreset(preset.id, 4);
       expect(profile.kind).toBe('application');
       expect(profile.sortOrder).toBe(4);
-      expect(profile.slots).toHaveLength(8);
+      expect(profile.slots).toHaveLength(expectedSlotCounts[preset.id]);
       expect(profile.slots.every((slot) => slot.assignment !== null)).toBe(true);
 
       for (const slot of profile.slots) {
@@ -76,7 +86,7 @@ describe('curated app profiles', () => {
       resolve: { standalone: 18, fill: 13, menu: 3, macro: 0 },
       premiere: { standalone: 18, fill: 16, menu: 4, macro: 0 },
       'after-effects': { standalone: 27, fill: 14, menu: 6, macro: 0 },
-      figma: { standalone: 13, fill: 16, menu: 3, macro: 5 },
+      figma: { standalone: 15, fill: 16, menu: 4, macro: 7 },
     };
     for (const preset of APP_PROFILE_PRESETS) {
       const actions = APP_ACTION_CATALOG.filter((action) => action.appId === preset.id);
@@ -143,7 +153,7 @@ describe('curated app profiles', () => {
   it('uses one Actions-menu shortcut and batched text queries for every Figma macro', () => {
     const queries = Object.values(FIGMA_MACRO_QUERIES);
     const macros = APP_ACTION_CATALOG.filter((action) => action.appId === 'figma' && action.actionType === 'macro');
-    expect(macros).toHaveLength(5);
+    expect(macros).toHaveLength(7);
     const shortcutPattern = FIGMA_ACTIONS_SHORTCUT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     for (const definition of macros) {
       expect(definition.defaultPayload).toMatch(
@@ -173,10 +183,10 @@ describe('curated app profiles', () => {
 
     const persistedBubbles = slotsToBubbles(profile.slots);
     const materialized = materializeFigmaActionsBinding(persistedBubbles);
-    const align = materialized.find(
-      (bubble) => bubble.definitionId === 'figma-align-menu'
+    const distribute = materialized.find(
+      (bubble) => bubble.definitionId === 'figma-distribute-menu'
     )!;
-    const tidy = align.children!.find(
+    const tidy = distribute.children!.find(
       (child) => child.definitionId === 'figma-tidy'
     )!;
     const materializedCopySvg = materialized.find(

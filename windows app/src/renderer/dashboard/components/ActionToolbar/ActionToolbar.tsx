@@ -625,7 +625,11 @@ export function ActionToolbar({
                     ? <img src={assignment.iconDataUrl} alt="" draggable={false} width={17} height={17} />
                     : <Icon size={17} />}
                 </span>
-                <span>{assignment.iconDataUrl ? 'Application icon' : assignment.iconName}</span>
+                <span>
+                  {assignment.iconDataUrl
+                    ? (assignment.iconName.includes(':') ? 'Custom icon (online)' : 'Application icon')
+                    : assignment.iconName}
+                </span>
                 <ImagePlus size={14} />
               </button>
             </div>
@@ -633,8 +637,8 @@ export function ActionToolbar({
               <div className={styles.iconPanel}>
                 <IconPicker
                   selectedIcon={assignment.iconName}
-                  onSelect={(iconName) => {
-                    onChange({ ...assignment, iconName, iconDataUrl: undefined });
+                  onSelect={(iconName, iconDataUrl) => {
+                    onChange({ ...assignment, iconName, iconDataUrl });
                     setShowIcons(false);
                   }}
                 />

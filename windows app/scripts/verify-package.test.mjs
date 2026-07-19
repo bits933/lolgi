@@ -31,11 +31,11 @@ describe('package verifier', () => {
     expect(findForbiddenEntries([
       '\\dist\\main-bundled.js',
       '\\dist\\win-unpacked\\electron.exe',
-      '\\dist\\Logi Actions Ring Setup 1.0.0.exe',
+      '\\dist\\Lolgi Action Ring Setup 1.0.0.exe',
       '\\dist\\old.blockmap',
     ])).toEqual([
       'dist/win-unpacked/electron.exe',
-      'dist/Logi Actions Ring Setup 1.0.0.exe',
+      'dist/Lolgi Action Ring Setup 1.0.0.exe',
       'dist/old.blockmap',
     ]);
   });

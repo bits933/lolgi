@@ -13,7 +13,7 @@ vi.mock('child_process', () => ({
       stdout: JSON.stringify({
         Name: 'logi-actions-ring',
         Path: process.execPath,
-        Title: 'Logi Actions Ring',
+        Title: 'Lolgi Action Ring',
         Hwnd: '9001',
         Pid: process.pid,
       }),

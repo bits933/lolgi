@@ -207,8 +207,16 @@
   "205": "windows.test.ts",
   "206": "Q: Compare Phase 1 and Phase 2 of FIGMA-ACTION-RING-DIAGNOSIS.md against the current working tree and identify implemented, partial, and missing fixes.",
   "207": "Q: Check the codebase and implement a persistent event-driven foreground tracker so Figma context is not replaced by the Action Ring's own windows.",
-  "208": "graphify.js",
+  "208": "MEMORY.md",
   "209": "electron-builder",
-  "210": "opencode.json",
-  "211": "Q: what have you done? The code is broken now. I am not able to hover over the bubbles properly. The hover state of every bubble is looking different and is not the same. When I hover over one bubble, the other bubble is getting activated. Everything is kind of broken. Please debug this previous thing, use a 5.6 terra high executor, act as moderator, create a task list, and read the code using graphify."
+  "210": "Micro-Interaction Patterns You Master",
+  "211": "Q: what have you done? The code is broken now. I am not able to hover over the bubbles properly. The hover state of every bubble is looking different and is not the same. When I hover over one bubble, the other bubble is getting activated. Everything is kind of broken. Please debug this previous thing, use a 5.6 terra high executor, act as moderator, create a task list, and read the code using graphify.",
+  "212": "Step 4 — Action Definitions",
+  "213": "package.json",
+  "214": "Common Pitfalls",
+  "215": "Core Value",
+  "216": "Trigger Mode A (Click-Click)",
+  "217": "Q: Unify hover state between incremental and static bubbles: give incremental bubbles the same hover shadow, stop static bubble fill colors changing on hover, and make submenu text pills visible only for the hovered bubble.",
+  "218": "FakeWatcherChild",
+  "219": "electron-builder"
 }

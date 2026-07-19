@@ -100,7 +100,7 @@ describe('config migration round-trip (M-07)', () => {
     const config = { ...base, profiles: [...base.profiles, customized] };
     const migrated = migrateConfig(JSON.parse(JSON.stringify(config)));
     const result = migrated.profiles.find((profile) => profile.id === figma.id)!;
-    const tidy = result.slots.find((slot) => slot.assignment?.definitionId === 'figma-align-menu')!
+    const tidy = result.slots.find((slot) => slot.assignment?.definitionId === 'figma-distribute-menu')!
       .assignment!.children!.find((child) => child.definitionId === 'figma-tidy')!;
     const properties = result.slots.find((slot) => slot.assignment?.definitionId === 'figma-properties-menu')!
       .assignment!.children!.find((child) => child.definitionId === 'figma-copy-svg')!;
@@ -153,7 +153,7 @@ describe('config migration round-trip (M-07)', () => {
     const twice = migrateConfig(JSON.parse(JSON.stringify(once)));
     expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
     const result = twice.profiles.find((profile) => profile.id === figma.id)!;
-    const tidy = result.slots.find((slot) => slot.assignment?.definitionId === 'figma-align-menu')!
+    const tidy = result.slots.find((slot) => slot.assignment?.definitionId === 'figma-distribute-menu')!
       .assignment!.children!.find((child) => child.definitionId === 'figma-tidy')!;
     expect(tidy.payload).toBe('Ctrl+K; delay:500; text:Tidy up; Enter');
   });

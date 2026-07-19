@@ -22,7 +22,7 @@ export function createTray(): Tray {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Logi Actions Ring');
+  tray.setToolTip('Lolgi Action Ring');
 
   updateTrayMenu();
 

@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- img-src data: is required — extracted app icons are PNG data URLs -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
-    <title>Logi Actions Ring — Settings</title>
+    <!-- connect-src api.iconify.design is required — the custom-icon picker searches Iconify's public icon API on demand (dashboard-only; the overlay stays network-locked) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.iconify.design" />
+    <title>Lolgi Action Ring — Settings</title>
     <style>
       /* Pre-paint background — matches the dashboard canvas token (--bg-base)
          and follows the OS preference so 'system' theme has no flash. */

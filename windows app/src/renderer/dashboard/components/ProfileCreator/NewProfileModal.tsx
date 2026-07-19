@@ -12,9 +12,10 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { APP_PROFILE_PRESETS, createAppProfileFromPreset } from '../../../../shared/defaultProfiles';
+import { APP_PROFILE_PRESETS, createAppProfileFromPreset, getSupportedAppId } from '../../../../shared/defaultProfiles';
 import { createEmptySlots } from '../../../../shared/profileUtils';
 import type { ForegroundAppInfo, MutationResult, RingProfile, RingSlot, SupportedAppId } from '../../../../shared/types';
+import { getAppIconSource } from '../../appIcons';
 import type { InstalledAppInfo } from '../../env.d';
 import styles from './NewProfileModal.module.css';
 
@@ -252,6 +253,7 @@ export function NewProfileModal({
               </div>
               <div className={styles.presetGrid}>
                 {APP_PROFILE_PRESETS.map((preset) => {
+                  const iconSource = getAppIconSource(preset.id);
                   const Icon = resolveIcon(preset.iconName);
                   return (
                     <button
@@ -260,7 +262,13 @@ export function NewProfileModal({
                       disabled={saving}
                       onClick={() => void handlePresetCreate(preset.id)}
                     >
-                      <span className={styles.presetIcon}><Icon size={20} strokeWidth={1.8} /></span>
+                      <span className={styles.presetIcon}>
+                        {iconSource ? (
+                          <img className={styles.presetIconGlyph} src={iconSource} alt="" />
+                        ) : (
+                          <Icon size={20} strokeWidth={1.8} />
+                        )}
+                      </span>
                       <span className={styles.presetCopy}>
                         <strong>{preset.displayName}</strong>
                         <small>{preset.description}</small>
@@ -313,10 +321,13 @@ export function NewProfileModal({
                     <span className={styles.appIcon}>
                       {extractingIcon ? (
                         <LoaderCircle size={16} className={styles.spinner} />
-                      ) : selectedApplication.iconDataUrl ? (
-                        <img src={selectedApplication.iconDataUrl} alt="" />
                       ) : (
-                        <AppWindow size={18} />
+                        (() => {
+                          const iconSource = getAppIconSource(getSupportedAppId(selectedApplication.processName));
+                          if (iconSource) return <img src={iconSource} alt="" />;
+                          if (selectedApplication.iconDataUrl) return <img src={selectedApplication.iconDataUrl} alt="" />;
+                          return <AppWindow size={18} />;
+                        })()
                       )}
                     </span>
                     <span><strong>{selectedApplication.displayName}</strong><small>{selectedApplication.processName}.exe</small></span>

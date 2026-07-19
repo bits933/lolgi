@@ -16,7 +16,9 @@ import {
   Settings2,
   Trash2,
 } from 'lucide-react';
+import { getSupportedAppId } from '../../../../shared/defaultProfiles';
 import type { RingProfile } from '../../../../shared/types';
+import { getAppIconSource } from '../../appIcons';
 import styles from './Sidebar.module.css';
 
 export type SidebarPage = 'profile' | 'settings';
@@ -39,12 +41,26 @@ interface SidebarProps {
   onOpenSettings: () => void;
 }
 function ProfileIcon({ profile }: { profile: RingProfile }): React.ReactElement {
-  if (profile.application?.iconDataUrl) {
-    return <img className={styles.profileIconImage} src={profile.application.iconDataUrl} alt="" />;
+  if (profile.kind === 'application') {
+    const iconSource = getAppIconSource(getSupportedAppId(profile.application?.processName));
+    if (iconSource) {
+      return (
+        <span className={styles.profileIcon}>
+          <img className={styles.profileIconGlyph} src={iconSource} alt="" />
+        </span>
+      );
+    }
+    if (profile.application?.iconDataUrl) {
+      return (
+        <span className={styles.profileIcon}>
+          <img className={styles.profileIconImage} src={profile.application.iconDataUrl} alt="" />
+        </span>
+      );
+    }
+    return <span className={styles.profileIcon}><AppWindow size={17} /></span>;
   }
-  if (profile.kind === 'application') return <AppWindow size={17} />;
-  if (profile.kind === 'global') return <Globe2 size={17} />;
-  return <CircleDot size={17} />;
+  if (profile.kind === 'global') return <span className={styles.profileIcon}><Globe2 size={17} /></span>;
+  return <span className={styles.profileIcon}><CircleDot size={17} /></span>;
 }
 
 export function Sidebar({
@@ -193,7 +209,7 @@ export function Sidebar({
                     aria-label={`Open ${profile.name} profile`}
                     title={collapsed ? profile.name : undefined}
                   >
-                    <span className={styles.profileIcon}><ProfileIcon profile={profile} /></span>
+                    <ProfileIcon profile={profile} />
                     <span className={styles.profileCopy}>
                       <span
                         key={`${profile.id}:${editingProfileId === profile.id ? 'editing' : 'label'}:${profile.name}`}

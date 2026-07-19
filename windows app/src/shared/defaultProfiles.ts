@@ -58,6 +58,8 @@ export const FIGMA_MACRO_QUERIES = {
   rasterize: 'Rasterize selection',
   'same-fill': 'Select all with same fill',
   'version-history': 'Show version history',
+  'distribute-h': 'Distribute horizontal spacing',
+  'distribute-v': 'Distribute vertical spacing',
 } as const;
 
 const SETUP: Record<Exclude<SupportedAppId, 'figma'>, string> = {
@@ -380,12 +382,27 @@ const figma: AppActionSpec[] = [
   menu('figma', 'group-menu', 'Group / Frame', 'Group', ['figma-group', 'figma-ungroup', 'figma-frame-selection'], 'Grouping and framing.'),
   fill('figma', 'zoom', 'Zoom', 'ZoomIn', 'Shift+1', 'Ctrl+=', 'Ctrl+-', 'Fit the canvas on click and zoom with the wheel.'),
   fill('figma', 'layer-order', 'Layer order', 'Layers3', 'Ctrl+Shift+]', 'Ctrl+]', 'Ctrl+[', 'Move the selection through the layer stack.'),
-  action('figma', 'align-left', 'Align left', 'AlignStartHorizontal', 'Alt+A', 'Align the selection left.'),
-  action('figma', 'align-right', 'Align right', 'AlignEndHorizontal', 'Alt+D', 'Align the selection right.'),
-  action('figma', 'align-h-center', 'Align horizontal centers', 'AlignCenterHorizontal', 'Alt+H', 'Align horizontal centers.'),
-  action('figma', 'align-v-center', 'Align vertical centers', 'AlignCenterVertical', 'Alt+V', 'Align vertical centers.'),
+  action('figma', 'align-left', 'Align left', 'AlignStartVertical', 'Alt+A', 'Align the selection left.'),
+  action('figma', 'align-right', 'Align right', 'AlignEndVertical', 'Alt+D', 'Align the selection right.'),
+  action('figma', 'align-h-center', 'Align horizontal centers', 'AlignCenterVertical', 'Alt+H', 'Align horizontal centers.'),
+  action('figma', 'align-v-center', 'Align vertical centers', 'AlignCenterHorizontal', 'Alt+V', 'Align vertical centers.'),
+  action('figma', 'align-top', 'Align top', 'AlignStartHorizontal', 'Alt+W', 'Align the selection top.'),
+  action('figma', 'align-bottom', 'Align bottom', 'AlignEndHorizontal', 'Alt+S', 'Align the selection bottom.'),
   figmaMacro('tidy', 'Tidy up', 'LayoutGrid', 'Run Tidy up through the Figma Actions menu; verify the result in-app.'),
-  menu('figma', 'align-menu', 'Align', 'AlignCenter', ['figma-align-left', 'figma-align-right', 'figma-align-h-center', 'figma-align-v-center', 'figma-tidy'], 'Alignment and tidy-up commands.'),
+  figmaMacro(
+    'distribute-h',
+    'Distribute horizontal spacing',
+    'AlignHorizontalDistributeCenter',
+    'Distribute horizontal spacing evenly through the Figma Actions menu; the default keyboard shortcut is unconfirmed across Figma versions, so this is routed through the Actions menu instead.'
+  ),
+  figmaMacro(
+    'distribute-v',
+    'Distribute vertical spacing',
+    'AlignVerticalDistributeCenter',
+    'Distribute vertical spacing evenly through the Figma Actions menu; the default keyboard shortcut is unconfirmed across Figma versions, so this is routed through the Actions menu instead.'
+  ),
+  menu('figma', 'align-menu', 'Align', 'AlignCenter', ['figma-align-left', 'figma-align-h-center', 'figma-align-right', 'figma-align-top', 'figma-align-bottom'], 'Alignment commands.'),
+  menu('figma', 'distribute-menu', 'Distribute', 'AlignHorizontalDistributeCenter', ['figma-distribute-h', 'figma-distribute-v', 'figma-align-v-center', 'figma-tidy'], 'Distribute spacing, vertical-center alignment, and tidy-up.'),
   action('figma', 'paste-properties', 'Paste properties', 'ClipboardPaste', 'Ctrl+Alt+V', 'Paste copied fills, strokes, and effects.'),
   action('figma', 'copy-properties', 'Copy properties', 'ClipboardCopy', 'Ctrl+Alt+C', 'Copy fills, strokes, and effects.'),
   action(
@@ -600,6 +617,7 @@ const PRESET_ACTION_IDS: Record<SupportedAppId, string[]> = {
     'figma-zoom',
     'figma-layer-order',
     'figma-align-menu',
+    'figma-distribute-menu',
     'figma-properties-menu',
     'figma-quick-actions',
   ],
