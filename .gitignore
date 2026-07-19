@@ -37,4 +37,3 @@ prd/
 
 # Local checkpoint notes â€” keep on this machine, never push to GitHub
 backups/
-debug/
