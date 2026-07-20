@@ -6,7 +6,6 @@ import {
   AppWindow,
   ArrowDown,
   ArrowUp,
-  Check,
   ChevronDown,
   FolderOpen,
   GripVertical,
@@ -599,11 +598,6 @@ export function ActionToolbar({
           </div>
         ) : (
           <>
-            <div className={styles.definitionTag}>
-              <span>{definition?.category ?? 'custom'}</span>
-              <strong>{definition?.label ?? assignment.definitionId}</strong>
-            </div>
-
             <SetupNotice definition={definition} assignment={assignment} />
             <VerificationNotice definition={definition} />
 
@@ -679,7 +673,6 @@ export function ActionToolbar({
 
       <footer className={styles.footer}>
         {assignment && <button type="button" className={styles.removeButton} onClick={onRemove}><Trash2 size={14} /> Remove</button>}
-        <span className={styles.dirtyState}>{dirty ? 'Unsaved changes' : <><Check size={12} /> Saved</>}</span>
         <button type="button" className={styles.cancelButton} onClick={onCancel} disabled={saving}>Cancel</button>
         <button type="button" className={styles.saveButton} onClick={onSave} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save'}</button>
       </footer>

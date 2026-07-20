@@ -34,6 +34,7 @@ const ringOpenPayload = (ringSessionId: string): RingOpenPayload => ({
   ringSessionId,
   triggerMode: 'A',
   ringSize: 'medium',
+  labelSize: 'medium',
   accentColor: '#ff0000',
   accentFillColor: '#ff0000',
   accentForegroundColor: '#ffffff',

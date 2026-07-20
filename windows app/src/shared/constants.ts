@@ -76,10 +76,25 @@ export const EXIT_UNMOUNT_DELAY_MS = 400;
 // Ring Size Presets
 // ---------------------------------------------------------------------------
 
-import type { RingSize, ThemeConfig } from './types';
+import type { LabelSize, RingSize, ThemeConfig } from './types';
 
 /** The default ring size used by new and existing configurations. */
 export const DEFAULT_RING_SIZE: RingSize = 'medium';
+
+/** The current text-pill treatment, preserved as the medium preset. */
+export const DEFAULT_LABEL_SIZE: LabelSize = 'medium';
+
+/** Typography and spacing tokens for Action Ring text-pill size presets. */
+export const LABEL_PILL_SIZE: Record<LabelSize, {
+  fontSize: number;
+  lineHeight: number;
+  paddingY: number;
+  paddingX: number;
+}> = {
+  small: { fontSize: 10, lineHeight: 1.15, paddingY: 3, paddingX: 6 },
+  medium: { fontSize: 11, lineHeight: 1.2, paddingY: 4, paddingX: 7 },
+  large: { fontSize: 13, lineHeight: 1.25, paddingY: 5, paddingX: 9 },
+};
 
 // ---------------------------------------------------------------------------
 // Theme Defaults

@@ -49,7 +49,7 @@
 }
 .headerStatus > button:hover { border-color: var(--border-hover); color: var(--text-primary); }
 .headerStatus > .globalActive,
-.headerStatus > .globalActive:hover { border-color: var(--border-accent); color: var(--accent); background: var(--accent-muted); }
+.headerStatus > .globalActive:hover { border-color: var(--border-accent); color: var(--accent); background: var(--accent-active-fill); }
 
 .unsaved {
   padding: 5px var(--space-2);

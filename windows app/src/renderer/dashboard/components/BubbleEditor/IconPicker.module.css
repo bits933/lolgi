@@ -82,8 +82,8 @@
 }
 
 .iconBtnSelected {
-  background: var(--accent-muted);
-  border-color: var(--accent);
+  background: var(--accent-active-fill);
+  border-color: var(--border-accent);
   color: var(--accent);
 }
 

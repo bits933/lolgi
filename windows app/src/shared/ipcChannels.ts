@@ -59,6 +59,9 @@ export const CONFIG_SET_HOTKEY = 'config:set-hotkey' as const;
 /** Update the global ring-size preset; payload: RingSize */
 export const CONFIG_SET_RING_SIZE = 'config:set-ring-size' as const;
 
+/** Update the global Action Ring text-pill size; payload: LabelSize */
+export const CONFIG_SET_LABEL_SIZE = 'config:set-label-size' as const;
+
 /** Update the dashboard theme (mode + accent); payload: ThemeConfig */
 export const CONFIG_SET_THEME = 'config:set-theme' as const;
 

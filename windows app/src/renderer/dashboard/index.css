@@ -33,6 +33,7 @@
   --accent: #7b68ee;
   --accent-hover: #6b58de;
   --accent-muted: rgba(123, 104, 238, 0.16);
+  --accent-active-fill: color-mix(in srgb, var(--accent) 5%, transparent);
   --accent-glow: rgba(123, 104, 238, 0.25);
   --accent-fill: #6350d8;       /* solid button fill (AA with white text) */
   --text-on-accent: #ffffff;    /* readable text on --accent-fill */
@@ -47,7 +48,7 @@
   --border-subtle: #2a2e37;
   --border-default: #383d48;
   --border-hover: #4a505d;
-  --border-accent: rgba(123, 104, 238, 0.4);
+  --border-accent: color-mix(in srgb, var(--accent) 10%, transparent);
   --border-accent-strong: rgba(123, 104, 238, 0.6);
 
   /* Semantic — danger / warning / success (theme-aware) */

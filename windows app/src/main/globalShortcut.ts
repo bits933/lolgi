@@ -220,6 +220,7 @@ async function handleHotkeyTrigger(): Promise<void> {
     ringSessionId: ringSession.id,
     triggerMode: config.triggerMode,
     ringSize: config.ringSize,
+    labelSize: config.labelSize,
     accentColor: themeColors.accent,
     accentFillColor: themeColors.accentFill,
     accentForegroundColor: themeColors.textOnAccent,

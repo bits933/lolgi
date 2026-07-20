@@ -39,7 +39,7 @@
   font: inherit;
   /* Match the action bubbles: same fill, border, shadow, and icon color. */
   background: var(--bubble-fill);
-  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  border: 0;
   box-shadow: var(--bubble-shadow);
   transform: translate(-50%, -50%) scale(0.62);
   opacity: 0;
@@ -115,7 +115,7 @@
   align-items: center;
   justify-content: center;
   background: var(--bubble-fill);
-  border: 2px solid var(--ring-accent);
+  border: var(--bubble-stroke-width) solid color-mix(in srgb, var(--bubble-stroke) 60%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 18%, transparent);
   transition: box-shadow 150ms ease-out;
 }

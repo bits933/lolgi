@@ -27,6 +27,7 @@ export function ActionsRing(): React.ReactElement | null {
   const hoveredIndex = useOverlayStore((s) => s.hoveredIndex);
   const bubbles = useOverlayStore((s) => s.bubbles);
   const ringSize = useOverlayStore((s) => s.ringSize);
+  const labelSize = useOverlayStore((s) => s.labelSize);
   const accentColor = useOverlayStore((s) => s.accentColor);
   const accentFillColor = useOverlayStore((s) => s.accentFillColor);
   const accentForegroundColor = useOverlayStore((s) => s.accentForegroundColor);
@@ -406,6 +407,7 @@ export function ActionsRing(): React.ReactElement | null {
     <RingContainer
       ref={ringRef}
       ringSize={ringSize}
+      labelSize={labelSize}
       accentColor={accentColor}
       accentFillColor={accentFillColor}
       accentForegroundColor={accentForegroundColor}

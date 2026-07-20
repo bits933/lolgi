@@ -319,6 +319,10 @@ export function ActionLibrary({
     if (target) onReorderSlots(slotId, target.id);
   };
 
+  const helperText = mode === 'actions'
+    ? folderChildren === null ? '' : 'Drag a leaf action into the open sub-ring.'
+    : folderChildren === null ? 'Select, reorder, add, or remove ring positions.' : 'Select, reorder, or remove sub-ring actions.';
+
   return (
     <aside className={styles.library} aria-label="Action and bubble library">
       <div className={styles.libraryHeader}>
@@ -338,9 +342,7 @@ export function ActionLibrary({
             onClick={() => onModeChange('bubbles')}
           >Bubbles <span>{folderChildren?.length ?? profile.slots.length}</span></button>
         </div>
-        <p>{mode === 'actions'
-          ? folderChildren === null ? 'Drag a preset onto the ring or select it, then choose a bubble.' : 'Drag a leaf action into the open sub-ring.'
-          : folderChildren === null ? 'Select, reorder, add, or remove ring positions.' : 'Select, reorder, or remove sub-ring actions.'}</p>
+        {helperText && <p>{helperText}</p>}
       </div>
 
       {mode === 'actions' ? (

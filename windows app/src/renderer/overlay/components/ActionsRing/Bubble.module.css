@@ -40,7 +40,7 @@
   height: 100%;
   border-radius: 50%;
   background: var(--bubble-fill);
-  border: var(--bubble-stroke-width) solid var(--bubble-stroke);
+  border: var(--bubble-stroke-width) solid color-mix(in srgb, var(--bubble-stroke) 60%, transparent);
   box-shadow: var(--bubble-shadow);
   display: flex;
   align-items: center;
@@ -142,14 +142,14 @@
 
 .active .bubbleSurface:not(.infiniteSurface) {
   background: var(--ring-accent-fill) !important;
-  border-color: color-mix(in srgb, var(--ring-accent) 80%, transparent);
+  border-color: color-mix(in srgb, var(--ring-accent) 60%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--ring-accent) 25%, transparent);
 }
 
 /* One hover treatment for static, menu, bounded-fill, and infinite-fill bubbles.
    The shadow changes, but every surface keeps its existing interior fill/color. */
 .hovered .bubbleSurface {
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ring-accent) 12%, transparent);
+  box-shadow: 0 0 12px #070707;
 }
 
 .icon {
@@ -195,11 +195,11 @@
   display: block;
   width: max-content;
   box-sizing: border-box;
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: var(--label-font-size, 11px);
+  line-height: var(--label-line-height, 1.2);
   color: #ffffff;
   max-width: 180px;
-  padding: 4px 7px;
+  padding: var(--label-padding-y, 4px) var(--label-padding-x, 7px);
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.72);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -215,7 +215,7 @@
 }
 
 .noStroke .bubbleSurface {
-  border: var(--bubble-stroke-width) solid var(--bubble-stroke) !important;
+  border: var(--bubble-stroke-width) solid color-mix(in srgb, var(--bubble-stroke) 60%, transparent) !important;
 }
 
 .hovered .label {
@@ -261,7 +261,7 @@
 
 .groupSurface {
   background: var(--bubble-fill);
-  border: 0;
+  border: var(--bubble-stroke-width) solid color-mix(in srgb, var(--bubble-stroke) 60%, transparent);
   box-shadow: var(--bubble-shadow);
 }
 

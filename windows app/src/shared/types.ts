@@ -56,6 +56,9 @@ export type BubbleType = 'default' | 'toggle' | 'fill' | 'menu';
 /** Global visual size preset for the actions ring */
 export type RingSize = 'small' | 'medium' | 'large';
 
+/** Global size preset for Action Ring text pills. */
+export type LabelSize = 'small' | 'medium' | 'large';
+
 /** Dashboard action-library category. */
 export type ActionCategory = 'system' | 'adjustments' | 'basic' | 'structural' | 'app' | 'custom';
 
@@ -319,6 +322,8 @@ export interface AppConfig {
   triggerMode: 'A' | 'B';
   /** Global visual size for the actions ring */
   ringSize: RingSize;
+  /** Global visual size for Action Ring text pills. */
+  labelSize: LabelSize;
   /** Dashboard theme (light/dark/custom + accent) */
   theme: ThemeConfig;
   /** Per-application bubble profiles */
@@ -336,6 +341,7 @@ export interface RingOpenPayload {
   /** Overlay window is 400×400; ring is always centered — no position needed */
   triggerMode: 'A' | 'B';
   ringSize: RingSize;
+  labelSize: LabelSize;
   accentColor: string;
   accentFillColor: string;
   accentForegroundColor: string;
@@ -414,6 +420,7 @@ export interface OverlayStore {
   systemState: SystemState;
   triggerMode: 'A' | 'B';
   ringSize: RingSize;
+  labelSize: LabelSize;
   accentColor: string;
   accentFillColor: string;
   accentForegroundColor: string;
@@ -441,6 +448,7 @@ export interface DashboardStore {
   loadConfig: () => Promise<void>;
   setHotkey: (hotkey: string) => Promise<void>;
   setRingSize: (ringSize: RingSize) => Promise<void>;
+  setLabelSize: (labelSize: LabelSize) => Promise<void>;
   setTheme: (theme: ThemeConfig) => Promise<void>;
   setLaunchAtStartup: (value: boolean) => Promise<void>;
   setRingEnabled: (value: boolean) => Promise<void>;

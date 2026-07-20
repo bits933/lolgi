@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AppConfig, DashboardStore, AppProfile, BubbleConfig, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../../shared/types';
+import type { AppConfig, DashboardStore, AppProfile, BubbleConfig, LabelSize, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../../shared/types';
 import { ringProfileToAppProfile, slotsToBubbles } from '../../../shared/profileUtils';
 
 function withUpdatedProfiles(config: AppConfig, profiles: RingProfile[]): AppConfig {
@@ -48,6 +48,17 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     if (result.success) {
       set((s) => ({
         config: s.config ? { ...s.config, ringSize } : s.config,
+        isDirty: false,
+      }));
+    }
+  },
+
+  setLabelSize: async (labelSize: LabelSize) => {
+    if (get().config?.labelSize === labelSize) return;
+    const result = await window.electronAPI.setLabelSize(labelSize);
+    if (result.success) {
+      set((s) => ({
+        config: s.config ? { ...s.config, labelSize } : s.config,
         isDirty: false,
       }));
     }

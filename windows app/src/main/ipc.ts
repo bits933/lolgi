@@ -11,6 +11,7 @@ import {
   CONFIG_GET_BUBBLES,
   CONFIG_GET,
   CONFIG_SET_HOTKEY,
+  CONFIG_SET_LABEL_SIZE,
   CONFIG_SET_RING_SIZE,
   CONFIG_SET_THEME,
   CONFIG_SET_LAUNCH_AT_STARTUP,
@@ -50,6 +51,7 @@ import type {
   AppProfile,
   BubbleConfig,
   ForegroundWindowTarget,
+  LabelSize,
   RingProfile,
   RingSize,
   ThemeConfig,
@@ -59,6 +61,7 @@ import { requiresForegroundInput } from './actions/system';
 import {
   getConfig,
   setHotkey,
+  setLabelSize,
   setRingSize,
   setTheme,
   setLaunchAtStartup,
@@ -281,6 +284,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(CONFIG_SET_RING_SIZE, (_event, ringSize: RingSize) => {
     setRingSize(ringSize);
+    return { success: true };
+  });
+
+  ipcMain.handle(CONFIG_SET_LABEL_SIZE, (_event, labelSize: LabelSize) => {
+    setLabelSize(labelSize);
     return { success: true };
   });
 

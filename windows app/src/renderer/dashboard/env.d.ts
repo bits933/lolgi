@@ -1,4 +1,4 @@
-import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
+import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
 import type { RuntimeBuildIdentity } from '../../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../../shared/diagnostics';
 
@@ -26,6 +26,7 @@ export interface DashboardElectronAPI {
   // --- Config writes ---
   setHotkey: (hotkey: string) => Promise<{ success: boolean }>;
   setRingSize: (ringSize: RingSize) => Promise<{ success: boolean }>;
+  setLabelSize: (labelSize: LabelSize) => Promise<{ success: boolean }>;
   setTheme: (theme: ThemeConfig) => Promise<{ success: boolean }>;
   setLaunchAtStartup: (value: boolean) => Promise<{ success: boolean }>;
   setRingEnabled: (value: boolean) => Promise<{ success: boolean }>;

@@ -6,7 +6,7 @@
  * owns persistence and re-exports nothing from here that touches the filesystem.
  */
 import type { ActionAssignment, AppConfig, BubbleConfig, RingProfile } from '../shared/types';
-import { DEFAULT_HOTKEY, DEFAULT_RING_SIZE, DEFAULT_THEME } from '../shared/constants';
+import { DEFAULT_HOTKEY, DEFAULT_LABEL_SIZE, DEFAULT_RING_SIZE, DEFAULT_THEME } from '../shared/constants';
 import {
   CONFIG_SCHEMA_VERSION,
   GENERAL_PROFILE_ID,
@@ -95,6 +95,7 @@ export function createDefaultConfig(): AppConfig {
     ringEnabled: true,
     triggerMode: 'A',
     ringSize: DEFAULT_RING_SIZE,
+    labelSize: DEFAULT_LABEL_SIZE,
     theme: DEFAULT_THEME,
     appProfiles: [],
   };
@@ -185,6 +186,7 @@ export function migrateConfig(raw: Partial<AppConfig>): AppConfig {
       selectedGlobalProfileId,
       profiles,
       ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
+      labelSize: raw.labelSize ?? DEFAULT_LABEL_SIZE,
       theme: { ...DEFAULT_THEME, ...raw.theme },
     } as AppConfig);
   }
@@ -202,6 +204,7 @@ export function migrateConfig(raw: Partial<AppConfig>): AppConfig {
     selectedGlobalProfileId: null,
     profiles: [general, ...migratedProfiles],
     ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
+    labelSize: raw.labelSize ?? DEFAULT_LABEL_SIZE,
     theme: { ...DEFAULT_THEME, ...raw.theme },
   } as AppConfig);
 }

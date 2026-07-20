@@ -1,11 +1,12 @@
 import React, { forwardRef } from 'react';
-import { getActionBubbleSize, RING_SIZE_SCALE } from '../../../../shared/constants';
-import type { BubbleSurfaceTokens, RingSize } from '../../../../shared/types';
+import { getActionBubbleSize, LABEL_PILL_SIZE, RING_SIZE_SCALE } from '../../../../shared/constants';
+import type { BubbleSurfaceTokens, LabelSize, RingSize } from '../../../../shared/types';
 import styles from './RingContainer.module.css';
 
 interface RingContainerProps {
   children: React.ReactNode;
   ringSize: RingSize;
+  labelSize: LabelSize;
   accentColor: string;
   accentFillColor: string;
   accentForegroundColor: string;
@@ -18,8 +19,9 @@ interface RingContainerProps {
  * aligns with the cursor — no viewport-relative positioning needed here.
  */
 export const RingContainer = forwardRef<HTMLDivElement, RingContainerProps>(
-  ({ children, ringSize, accentColor, accentFillColor, accentForegroundColor, bubbleSurface }, ref) => {
+  ({ children, ringSize, labelSize, accentColor, accentFillColor, accentForegroundColor, bubbleSurface }, ref) => {
     const actionBubbleSize = getActionBubbleSize(ringSize);
+    const labelPillSize = LABEL_PILL_SIZE[labelSize];
 
     return (
       <div
@@ -29,6 +31,10 @@ export const RingContainer = forwardRef<HTMLDivElement, RingContainerProps>(
           transform: `translate(-50%, -50%) scale(${RING_SIZE_SCALE[ringSize]}) translateZ(0)`,
           '--action-bubble-size': `${actionBubbleSize}px`,
           '--action-bubble-radius': `${actionBubbleSize / 2}px`,
+          '--label-font-size': `${labelPillSize.fontSize}px`,
+          '--label-line-height': String(labelPillSize.lineHeight),
+          '--label-padding-y': `${labelPillSize.paddingY}px`,
+          '--label-padding-x': `${labelPillSize.paddingX}px`,
           '--ring-accent': accentColor,
           '--ring-accent-fill': accentFillColor,
           '--ring-on-accent': accentForegroundColor,

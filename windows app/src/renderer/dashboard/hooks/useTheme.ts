@@ -30,7 +30,6 @@ export function useTheme(): void {
     root.style.setProperty('--accent-glow', colors.accentGlow);
     root.style.setProperty('--accent-fill', colors.accentFill);
     root.style.setProperty('--text-on-accent', colors.textOnAccent);
-    root.style.setProperty('--border-accent', colors.borderAccent);
     root.style.setProperty('--border-accent-strong', colors.borderAccentStrong);
     root.style.setProperty('--shadow-glow', colors.shadowGlow);
 

@@ -6,6 +6,7 @@ import type {
   AppConfig,
   AppProfile,
   BubbleConfig,
+  LabelSize,
   MutationResult,
   RingProfile,
   RingSize,
@@ -89,6 +90,10 @@ export function setHotkey(hotkey: string): void {
 
 export function setRingSize(ringSize: RingSize): void {
   writeConfig({ ...getConfig(), ringSize });
+}
+
+export function setLabelSize(labelSize: LabelSize): void {
+  writeConfig({ ...getConfig(), labelSize });
 }
 
 export function setTheme(theme: ThemeConfig): void {

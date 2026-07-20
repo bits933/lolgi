@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import {
   CONFIG_GET,
   CONFIG_SET_HOTKEY,
+  CONFIG_SET_LABEL_SIZE,
   CONFIG_SET_RING_SIZE,
   CONFIG_SET_THEME,
   CONFIG_SET_LAUNCH_AT_STARTUP,
@@ -39,7 +40,7 @@ import {
   DIAGNOSTICS_GET_RECENT,
   DIAGNOSTICS_COPY_LAST,
 } from '../shared/ipcChannels';
-import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
+import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
 import type { RuntimeBuildIdentity } from '../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../shared/diagnostics';
 import type { InstalledAppInfo } from '../main/utils/foregroundApp';
@@ -77,6 +78,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Set the global ring-size preset */
   setRingSize: (ringSize: RingSize): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(CONFIG_SET_RING_SIZE, ringSize),
+
+  /** Set the global Action Ring text-pill size preset. */
+  setLabelSize: (labelSize: LabelSize): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(CONFIG_SET_LABEL_SIZE, labelSize),
 
   /** Set the dashboard theme (mode + accent) */
   setTheme: (theme: ThemeConfig): Promise<{ success: boolean }> =>

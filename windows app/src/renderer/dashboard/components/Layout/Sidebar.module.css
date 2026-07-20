@@ -10,7 +10,9 @@
   transition: width var(--transition-normal);
 }
 
-.sidebarCollapsed { width: 72px; }
+.sidebarCollapsed {
+  width: 72px;
+}
 
 .logoArea {
   padding: var(--space-6) var(--space-5) var(--space-5);
@@ -158,7 +160,7 @@
 
 .profileItemActive {
   color: var(--text-primary);
-  background: var(--accent-muted);
+  background: var(--accent-active-fill);
   border-color: var(--border-accent);
 }
 
@@ -252,10 +254,23 @@
   font-size: var(--fs-xs);
   font-weight: 600;
 }
+
 .dirtyDot,
-.settingsDirtyDot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--warning); }
-.dirtyDot { margin-left: auto; }
-.settingsDirtyDot { margin-left: auto; }
+.settingsDirtyDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.dirtyDot {
+  margin-left: auto;
+}
+
+.settingsDirtyDot {
+  margin-left: auto;
+}
 
 .profileMenuButton {
   width: 32px;
@@ -358,12 +373,12 @@
 }
 
 .addProfileBtn:hover,
-.settingsBtn:hover,
-.settingsBtnActive {
+.settingsBtn:hover {
   color: var(--accent);
   border-color: var(--border-accent);
   background: var(--accent-muted);
 }
+.settingsBtnActive { color: var(--accent); border-color: var(--border-accent); background: var(--accent-active-fill); }
 
 .footer {
   padding: var(--space-3) var(--space-3) var(--space-4);
@@ -396,7 +411,9 @@
   display: none;
 }
 
-.sidebarCollapsed .collapseBtn { margin-left: 0; }
+.sidebarCollapsed .collapseBtn {
+  margin-left: 0;
+}
 
 .sidebarCollapsed .nav {
   padding: var(--space-2) var(--space-3) 0;

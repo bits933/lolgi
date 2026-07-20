@@ -47,8 +47,8 @@
 }
 
 .inputRecording {
-  border-color: var(--accent);
-  background: var(--accent-muted);
+  border-color: var(--border-accent);
+  background: var(--accent-active-fill);
   box-shadow: 0 0 0 2px var(--accent-muted);
 }
 

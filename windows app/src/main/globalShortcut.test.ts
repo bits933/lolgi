@@ -147,6 +147,7 @@ function createConfig(): AppConfig {
     ringEnabled: true,
     triggerMode: 'A',
     ringSize: 'medium',
+    labelSize: 'medium',
     theme: {
       mode: 'dark',
       accentColor: '#6750a4',

@@ -3,7 +3,7 @@ import { CircleDot, Copy, Info, Keyboard, Power, RotateCcw, Sparkles } from 'luc
 import { useDashboardStore } from '../../store/dashboardStore';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_BUBBLE_COLOR } from '../../../../shared/constants';
 import { createEmptySlots } from '../../../../shared/profileUtils';
-import type { RingSize, ThemeConfig, ThemeMode } from '../../../../shared/types';
+import type { LabelSize, RingSize, ThemeConfig, ThemeMode } from '../../../../shared/types';
 import type { RuntimeBuildIdentity } from '../../../../shared/buildInfo';
 import { HotkeyConfig } from '../HotkeyConfig/HotkeyConfig';
 import styles from './GeneralSettings.module.css';
@@ -12,6 +12,12 @@ const RING_SIZE_OPTIONS: Array<{ value: RingSize; label: string; hint: string }>
   { value: 'small', label: 'Small', hint: 'Compact' },
   { value: 'medium', label: 'Medium', hint: 'Default' },
   { value: 'large', label: 'Large', hint: 'Spacious' },
+];
+
+const LABEL_SIZE_OPTIONS: Array<{ value: LabelSize; label: string; hint: string }> = [
+  { value: 'small', label: 'Small', hint: 'Compact' },
+  { value: 'medium', label: 'Medium', hint: 'Current' },
+  { value: 'large', label: 'Large', hint: 'Easy to read' },
 ];
 
 const THEME_MODE_OPTIONS: Array<{ value: ThemeMode; label: string; hint: string }> = [
@@ -29,6 +35,7 @@ function formatBuildTime(value: string): string {
 export function GeneralSettings(): React.ReactElement {
   const config = useDashboardStore((state) => state.config);
   const setRingSize = useDashboardStore((state) => state.setRingSize);
+  const setLabelSize = useDashboardStore((state) => state.setLabelSize);
   const setTheme = useDashboardStore((state) => state.setTheme);
   const setLaunchAtStartup = useDashboardStore((state) => state.setLaunchAtStartup);
   const setRingEnabled = useDashboardStore((state) => state.setRingEnabled);
@@ -145,6 +152,14 @@ export function GeneralSettings(): React.ReactElement {
             <div className={styles.threeSegments} role="group" aria-label="Actions Ring size">
               {RING_SIZE_OPTIONS.map((option) => (
                 <button key={option.value} type="button" className={config.ringSize === option.value ? styles.segmentActive : ''} onClick={() => config.ringSize !== option.value && void setRingSize(option.value)} aria-pressed={config.ringSize === option.value}>
+                  <strong>{option.label}</strong><small>{option.hint}</small>
+                </button>
+              ))}
+            </div>
+            <div className={styles.optionLabel}>Text pill size</div>
+            <div className={styles.threeSegments} role="group" aria-label="Action Ring text pill size">
+              {LABEL_SIZE_OPTIONS.map((option) => (
+                <button key={option.value} type="button" className={config.labelSize === option.value ? styles.segmentActive : ''} onClick={() => config.labelSize !== option.value && void setLabelSize(option.value)} aria-pressed={config.labelSize === option.value}>
                   <strong>{option.label}</strong><small>{option.hint}</small>
                 </button>
               ))}
