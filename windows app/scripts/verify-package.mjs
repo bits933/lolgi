@@ -261,7 +261,7 @@ function main() {
   const requestedPath = process.argv[2];
   const archivePath = requestedPath
     ? resolve(projectRoot, requestedPath)
-    : resolve(projectRoot, 'release', 'win-unpacked', 'resources', 'app.asar');
+    : resolve(projectRoot, '..', 'release', 'win-unpacked', 'resources', 'app.asar');
   const result = verifyPackage(archivePath);
   const shortCommit = result.gitCommit === 'unknown' ? 'unknown' : result.gitCommit.slice(0, 12);
   console.log(

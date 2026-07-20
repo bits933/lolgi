@@ -83,7 +83,7 @@ The full release command:
 The installer is written to:
 
 ```text
-windows app/release/Lolgi Action Ring Setup <version>.exe
+release/Lolgi Action Ring Setup <version>.exe
 ```
 
 ## Verify the build
@@ -102,7 +102,7 @@ windows app/
   src/renderer/   Overlay ring and configuration dashboard
   src/shared/     Shared types, geometry, profiles, and action definitions
   scripts/        Build identity, package verification, and release manifest tools
-  release/        Generated installer and packaging output (not committed)
+release/            Generated installer and packaging output (not committed)
 src/              Web prototype/source surface
 ```
 

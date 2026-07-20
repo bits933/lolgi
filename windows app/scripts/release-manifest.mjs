@@ -19,6 +19,10 @@ const projectRoot = resolve(scriptDirectory, '..');
 const PRODUCT_NAME = 'Lolgi Action Ring';
 const MANIFEST_SCHEMA_VERSION = 1;
 
+function defaultReleaseRoot(root) {
+  return root === projectRoot ? resolve(root, '..', 'release') : resolve(root, 'release');
+}
+
 function readJson(path, label) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'));
@@ -128,7 +132,7 @@ function readAsarBuildIdentity(appAsarPath) {
 
 export function createReleaseManifest({
   root = projectRoot,
-  releaseRoot = resolve(root, 'release'),
+  releaseRoot = defaultReleaseRoot(root),
 } = {}) {
   const packageJson = readJson(resolve(root, 'package.json'), 'package.json');
   const build = normalizeBuildIdentity(
@@ -163,7 +167,7 @@ export function createReleaseManifest({
 
 export function writeReleaseManifest(
   manifest,
-  output = resolve(projectRoot, 'release', 'release-manifest.json'),
+  output = resolve(projectRoot, '..', 'release', 'release-manifest.json'),
 ) {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
@@ -172,7 +176,7 @@ export function writeReleaseManifest(
 
 export function verifyReleaseManifest({
   root = projectRoot,
-  releaseRoot = resolve(root, 'release'),
+  releaseRoot = defaultReleaseRoot(root),
   manifestPath = resolve(releaseRoot, 'release-manifest.json'),
 } = {}) {
   const manifest = readJson(manifestPath, 'Release manifest');

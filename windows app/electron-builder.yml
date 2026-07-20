@@ -4,10 +4,10 @@ copyright: Copyright © 2026
 asar: true
 
 directories:
-  output: release
+  output: ../release
   buildResources: resources
 
-# Keep staging (`dist`) and packaged output (`release`) separate. The explicit
+# Keep staging (`dist`) and root-level packaged output (`../release`) separate. The explicit
 # allowlist prevents stale installers, win-unpacked trees, or builder metadata
 # from ever being copied into app.asar.
 files:
