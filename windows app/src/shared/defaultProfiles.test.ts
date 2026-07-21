@@ -178,10 +178,10 @@ describe('curated app profiles', () => {
     // they also edit through the step editor.
     const typedAliasMacros = macros.filter((action) => (action.defaultPayload ?? '').startsWith('keys:'));
     expect(typedAliasMacros).toHaveLength(18);
-    expect(typedAliasMacros.every((action) => /^keys:[^;]+; Enter(?:; keys:[^;]+; Enter)?$/.test(action.defaultPayload ?? '')))
+    expect(typedAliasMacros.every((action) => /^keys:[^;]+ Enter(?:; keys:[^;]+ Enter)?$/.test(action.defaultPayload ?? '')))
       .toBe(true);
     expect(APP_ACTION_CATALOG.find((action) => action.id === 'autocad-zoom-extents')?.defaultPayload)
-      .toBe('keys:Z; Enter; keys:E; Enter');
+      .toBe('keys:Z Enter; keys:E Enter');
     const history = APP_ACTION_CATALOG.find((action) => action.id === 'autocad-history');
     expect([history?.defaultPayload, history?.scrollUpAction, history?.scrollDownAction])
       .toEqual(['Ctrl+Z', 'Ctrl+Y', 'Ctrl+Z']);

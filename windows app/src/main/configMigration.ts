@@ -107,12 +107,17 @@ function migrateAutoCadMacroNode<T extends ActionAssignment | BubbleConfig>(node
   //    verbatim — Save (Ctrl+S), Cancel (Esc; Esc), Repeat last (Enter) — which
   //    are macros now purely so they too open the multi-step editor.
   // Custom-edited payloads never match any of these forms, so they are untouched.
-  const sequencePayload = macroPayload?.replace(/keys:([^;]+)/g, (_match, keys: string) => [...keys].join('; '));
-  const unicodePayload = macroPayload?.replace(/keys:/g, 'text:');
+  // The catalog payload types letters and Enter in one keystroke run
+  // ("keys:PL Enter"); the prior stored form split Enter into its own step
+  // ("keys:PL; Enter"). Derive the older healable forms from that separate-step
+  // form, not from the catalog payload directly.
+  const separateStepPayload = macroPayload?.replace(/ Enter/g, '; Enter');
+  const sequencePayload = separateStepPayload?.replace(/keys:([^;]+)/g, (_match, keys: string) => [...keys].join('; '));
+  const unicodePayload = separateStepPayload?.replace(/keys:/g, 'text:');
   const shouldMigrate =
     macroPayload !== undefined &&
     ((node.actionType !== 'macro' && (node.payload === sequencePayload || node.payload === macroPayload)) ||
-      (node.actionType === 'macro' && node.payload === unicodePayload && unicodePayload !== macroPayload));
+      (node.actionType === 'macro' && (node.payload === separateStepPayload || node.payload === unicodePayload) && node.payload !== macroPayload));
   const migratedChildren = node.children?.map((child) => migrateAutoCadMacroNode(child));
   const childrenChanged = migratedChildren
     ? migratedChildren.some((child, index) => child !== node.children?.[index])

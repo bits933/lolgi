@@ -27,13 +27,6 @@
   box-shadow: none;
 }
 
-.resultCount {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));

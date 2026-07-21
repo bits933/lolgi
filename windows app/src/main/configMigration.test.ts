@@ -160,9 +160,26 @@ describe('config migration round-trip (M-07)', () => {
     const rectangle = draw.children!.find((child) => child.definitionId === 'autocad-rectangle')!;
 
     expect(polyline.actionType).toBe('macro');
-    expect(polyline.payload).toBe('keys:PL; Enter');
+    expect(polyline.payload).toBe('keys:PL Enter');
     expect(rectangle.actionType).toBe('keyboard-sequence');
     expect(rectangle.payload).toBe('R; X; Enter');
+  });
+
+  it('heals the separate-step AutoCAD macro form into the single keystroke run', () => {
+    const base = createDefaultConfig();
+    const autocad = createAppProfileFromPreset('autocad', 1);
+    const legacy = mapProfileAssignment(autocad, 'autocad-polyline', (assignment) => ({
+      ...assignment,
+      actionType: 'macro',
+      payload: 'keys:PL; Enter',
+    }));
+    const migrated = migrateConfig({ ...base, profiles: [...base.profiles, legacy] });
+    const draw = migrated.profiles.find((profile) => profile.id === autocad.id)!
+      .slots.find((slot) => slot.assignment?.definitionId === 'autocad-draw-menu')!.assignment!;
+    const polyline = draw.children!.find((child) => child.definitionId === 'autocad-polyline')!;
+
+    expect(polyline.actionType).toBe('macro');
+    expect(polyline.payload).toBe('keys:PL Enter');
   });
 
   it('heals superseded text: AutoCAD macros into keys: keystroke macros', () => {
@@ -185,7 +202,7 @@ describe('config migration round-trip (M-07)', () => {
     const rectangle = draw.children!.find((child) => child.definitionId === 'autocad-rectangle')!;
 
     expect(polyline.actionType).toBe('macro');
-    expect(polyline.payload).toBe('keys:PL; Enter');
+    expect(polyline.payload).toBe('keys:PL Enter');
     expect(rectangle.payload).toBe('text:CUSTOM; Enter');
   });
 

@@ -31,7 +31,8 @@ const ALL_ICON_NAMES: string[] = Object.keys(LucideIcons).filter(
     /^[A-Z]/.test(key)
 );
 
-// Curated common icons shown when search is empty
+// Broad offline icon library shown when search is empty. Search still exposes
+// every Lucide export, while Iconify remains available for online results.
 const COMMON_ICONS: string[] = [
   'Volume2', 'VolumeX', 'Mic', 'MicOff', 'Camera',
   'Clipboard', 'Clock', 'Settings', 'Sun', 'Moon',
@@ -45,6 +46,44 @@ const COMMON_ICONS: string[] = [
   'File', 'Terminal', 'Code', 'Globe', 'Map',
   'Navigation', 'Compass', 'Layers', 'Grid3X3', 'LayoutDashboard',
   'Maximize', 'Minimize', 'RotateCw', 'RefreshCw', 'Power',
+  'Activity', 'Airplay', 'AlarmClock', 'Archive', 'ArchiveRestore',
+  'Armchair', 'AtSign', 'Award', 'BadgeCheck', 'Banknote',
+  'BarChart3', 'BookOpen', 'Bookmark', 'Bot', 'Briefcase',
+  'Brush', 'Bug', 'Building2', 'Calculator', 'Calendar',
+  'CalendarCheck', 'CalendarDays', 'ChartBar', 'Check', 'CheckCircle2',
+  'CheckSquare', 'ChevronDown', 'ChevronLeft', 'ChevronRight', 'ChevronUp',
+  'Circle', 'CircleHelp', 'CirclePlus', 'Cloud', 'CloudDownload',
+  'CloudUpload', 'Code2', 'Coffee', 'Command', 'Component',
+  'Contact', 'Contrast', 'Cpu', 'CreditCard', 'Crown',
+  'Database', 'Diamond', 'Disc3', 'DollarSign', 'DoorOpen',
+  'Edit3', 'ExternalLink', 'Factory', 'FileArchive', 'FileAudio',
+  'FileCheck2', 'FileCode2', 'FileCog', 'FileImage', 'FileJson2',
+  'FileKey2', 'FileLock2', 'FilePlus2', 'FileSearch2', 'FileSpreadsheet',
+  'FileText', 'FileType2', 'FileVideo', 'Filter', 'Flag',
+  'Flame', 'Folder', 'FolderArchive', 'FolderCheck', 'FolderCog',
+  'FolderKanban', 'FolderKey', 'FolderLock', 'FolderPlus', 'FolderSearch',
+  'FolderTree', 'Gamepad2', 'Gauge', 'Gem', 'GitBranch',
+  'GitCommit', 'GitCompare', 'Github', 'GitPullRequest', 'Hand',
+  'HardDrive', 'Hash', 'HelpCircle', 'History', 'House',
+  'Inbox', 'Key', 'Keyboard', 'Languages', 'Laptop',
+  'Lightbulb', 'Link', 'Link2', 'List', 'ListChecks',
+  'ListFilter', 'ListMusic', 'ListPlus', 'Loader', 'MapPin',
+  'Maximize2', 'Menu', 'MessageCircle', 'MessageSquareCode', 'MonitorCog',
+  'MonitorPlay', 'MoreHorizontal', 'Mouse', 'MousePointer2', 'Move',
+  'Network', 'NotebookTabs', 'Package', 'PanelLeft', 'PenLine',
+  'Percent', 'Pin', 'PinOff', 'Plug', 'Plus',
+  'Printer', 'Puzzle', 'QrCode', 'Radio', 'Receipt',
+  'RectangleEllipsis', 'Redo2', 'Repeat2', 'Rocket', 'Router',
+  'Rss', 'Ruler', 'ScanLine', 'Scissors', 'Send',
+  'Server', 'Share2', 'Shield', 'ShieldAlert', 'ShieldCheck',
+  'ShoppingBag', 'ShoppingCart', 'SlidersHorizontal', 'Sparkles', 'SquareTerminal',
+  'Stamp', 'Store', 'Tablet', 'Tag', 'Tags',
+  'Target', 'Telescope', 'ThumbsUp', 'Timer', 'TimerReset',
+  'ToggleLeft', 'ToggleRight', 'ToolCase', 'Trophy', 'Truck',
+  'Tv', 'Type', 'Undo2', 'Unplug', 'Usb',
+  'UserCheck', 'UserCog', 'UserPlus', 'UserRound', 'UsersRound',
+  'Vault', 'WandSparkles', 'Watch', 'Webcam', 'Workflow',
+  'Wrench', 'ZapOff', 'ZoomIn', 'ZoomOut',
 ].filter((name) => name in (LucideIcons as Record<string, unknown>));
 
 // Memoized icon cell to avoid re-renders in the grid
@@ -200,11 +239,6 @@ export function IconPicker({ selectedIcon, onSelect }: IconPickerProps): React.R
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search icons"
         />
-        <span className={styles.resultCount}>
-          {query.trim() === ''
-            ? `${COMMON_ICONS.length} common`
-            : `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`}
-        </span>
       </div>
       <div className={styles.sectionLabel}>{query.trim() === '' ? 'Common' : 'Lucide (offline)'}</div>
       <div className={styles.grid}>
