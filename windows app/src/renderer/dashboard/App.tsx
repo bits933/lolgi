@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import {
   CopyPlus,
   Globe2,
@@ -45,22 +44,22 @@ interface FolderViewState {
 function cloneProfile(profile: RingProfile, profiles: RingProfile[]): RingProfile {
   return {
     ...profile,
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     name: `${profile.name} copy`,
     kind: 'global',
     protected: false,
     sortOrder: Math.max(0, ...profiles.map((item) => item.sortOrder)) + 1,
     application: undefined,
     slots: profile.slots.map((slot, position) => ({
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       position,
       assignment: slot.assignment
         ? {
             ...slot.assignment,
-            id: uuidv4(),
+            id: crypto.randomUUID(),
             children: slot.assignment.children?.map((child, angleIndex) => ({
               ...child,
-              id: uuidv4(),
+              id: crypto.randomUUID(),
               angleIndex,
             })),
           }
@@ -385,7 +384,7 @@ export function App(): React.ReactElement {
 
   const addSlot = () => {
     if (!workingProfile || workingProfile.slots.length >= 12) return;
-    const newSlot: RingSlot = { id: uuidv4(), position: workingProfile.slots.length, assignment: null };
+    const newSlot: RingSlot = { id: crypto.randomUUID(), position: workingProfile.slots.length, assignment: null };
     dispatchDraft({ type: 'replace-slots', slots: [...workingProfile.slots, newSlot], selectedSlotId: newSlot.id });
   };
 

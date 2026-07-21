@@ -20,8 +20,10 @@ import { ACTION_CATALOG, ACTION_DEFINITIONS, createAssignmentFromDefinition } fr
 import { AI_BRAND_ICONS, AI_PROVIDERS, type AiProviderId } from '../../../../shared/brandIcons';
 import { MAX_FOLDER_CHILDREN } from '../../../../shared/constants';
 import { assignmentToBubble, bubbleToAssignment } from '../../../../shared/profileUtils';
+import { shortcutFromKeyEvent } from '../../../../shared/shortcutParser';
 import type { ActionAssignment, ActionDefinition, ActionEditorField, BubbleConfig, LaunchableAppInfo, RingProfile } from '../../../../shared/types';
 import { IconPicker } from '../BubbleEditor/IconPicker';
+import { MacroStepEditor } from '../MacroStepEditor/MacroStepEditor';
 import styles from './ActionToolbar.module.css';
 
 type AnyIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>;
@@ -62,18 +64,6 @@ function writeField(
   if (key === 'scrollUpAction') return { ...assignment, scrollUpAction: String(value) };
   if (key === 'scrollDownAction') return { ...assignment, scrollDownAction: String(value) };
   return { ...assignment, parameters: { ...assignment.parameters, [key]: value } };
-}
-
-function shortcutFromEvent(event: React.KeyboardEvent): string | null {
-  if (['Control', 'Alt', 'Shift', 'Meta', 'Tab'].includes(event.key)) return null;
-  const parts: string[] = [];
-  if (event.ctrlKey) parts.push('Ctrl');
-  if (event.altKey) parts.push('Alt');
-  if (event.shiftKey) parts.push('Shift');
-  if (event.metaKey) parts.push('Meta');
-  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-  parts.push(key);
-  return parts.join('+');
 }
 
 interface FieldControlProps {
@@ -250,33 +240,19 @@ function FieldControl({ field, assignment, profiles, onChange }: FieldControlPro
   }
 
   if (field.type === 'textarea') {
-    const isKeyboardMacro = assignment.actionType === 'keyboard-sequence';
-    const appendMacroStep = (step: string) => {
-      const value = String(current).trimEnd();
-      setValue(value ? `${value}\n${step}` : step);
-    };
+    if (assignment.actionType === 'macro' || assignment.actionType === 'keyboard-sequence') {
+      return (
+        <div className={styles.field}>
+          <span>{field.label}{field.required ? ' *' : ''}</span>
+          <MacroStepEditor actionType={assignment.actionType} value={String(current)} onChange={setValue} />
+        </div>
+      );
+    }
     return (
       <div className={styles.field}>
         <span>{field.label}{field.required ? ' *' : ''}</span>
-        {isKeyboardMacro && (
-          <div className={styles.macroCapture}>
-            <input
-              readOnly
-              value=""
-              placeholder="Click here, then press a shortcut to add it"
-              aria-label="Record a keyboard macro shortcut"
-              onKeyDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const shortcut = shortcutFromEvent(event);
-                if (shortcut) appendMacroStep(shortcut);
-              }}
-            />
-            <button type="button" onClick={() => appendMacroStep('250ms')}>+ Add 250ms delay</button>
-          </div>
-        )}
         <textarea
-          rows={assignment.definitionId === 'custom-action' ? 7 : 4}
+          rows={4}
           value={String(current)}
           placeholder={field.placeholder}
           onChange={(event) => setValue(event.target.value)}
@@ -377,7 +353,7 @@ function FieldControl({ field, assignment, profiles, onChange }: FieldControlPro
           }}
           onKeyDown={(event) => {
             if (field.type !== 'shortcut') return;
-            const shortcut = shortcutFromEvent(event);
+            const shortcut = shortcutFromKeyEvent(event);
             if (!shortcut) return;
             event.preventDefault();
             setValue(shortcut);
@@ -662,7 +638,7 @@ export function ActionToolbar({
             {assignment.definitionId === 'custom-action' && (
               <div className={styles.customHint}>
                 <strong>Macro syntax</strong>
-                <p>Separate steps with semicolons. Use <code>delay:100</code>, <code>url:</code>, <code>app:</code>, <code>file:</code>, <code>folder:</code>, or <code>command:</code> prefixes.</p>
+                <p>Click the dashed box above and press a key to add it as a real key press (shown as a chip — remove and re-press to change it, it can&rsquo;t be typed into). Use <strong>+ Type</strong> for characters to type on a command line like AutoCAD, <strong>+ Text</strong> for pasted/Unicode text, <strong>+ Delay</strong> for a pause, or <strong>+ Custom</strong> for a raw <code>url:</code>, <code>app:</code>, <code>file:</code>, <code>folder:</code>, or <code>command:</code> step.</p>
               </div>
             )}
           </>

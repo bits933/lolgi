@@ -6,13 +6,11 @@ import {
   CONFIG_SET_RING_SIZE,
   CONFIG_SET_THEME,
   CONFIG_SET_LAUNCH_AT_STARTUP,
+  CONFIG_SET_HARDWARE_ACCELERATION,
   CONFIG_SET_RING_ENABLED,
   CONFIG_SET_TRIGGER_MODE,
-  CONFIG_SET_BUBBLES,
-  CONFIG_UPDATE_BUBBLE,
-  CONFIG_ADD_BUBBLE,
-  CONFIG_REMOVE_BUBBLE,
-  CONFIG_REORDER_BUBBLES,
+  GRAPHICS_STATUS_GET,
+  APP_RELAUNCH,
   DIALOG_PICK_FILE,
   DIALOG_PICK_FOLDER,
   PROFILE_V2_SAVE,
@@ -22,14 +20,6 @@ import {
   DASHBOARD_SET_DIRTY,
   DASHBOARD_CLOSE_REQUESTED,
   DASHBOARD_CLOSE_APPROVE,
-  PROFILE_GET_ALL,
-  PROFILE_ADD,
-  PROFILE_UPDATE,
-  PROFILE_REMOVE,
-  PROFILE_SET_BUBBLES,
-  PROFILE_UPDATE_BUBBLE,
-  PROFILE_ADD_BUBBLE,
-  PROFILE_REMOVE_BUBBLE,
   APP_DETECT_FOREGROUND,
   APP_LIST_RUNNING,
   APP_LIST_INSTALLED,
@@ -40,7 +30,7 @@ import {
   DIAGNOSTICS_GET_RECENT,
   DIAGNOSTICS_COPY_LAST,
 } from '../shared/ipcChannels';
-import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
+import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
 import type { RuntimeBuildIdentity } from '../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../shared/diagnostics';
 import type { InstalledAppInfo } from '../main/utils/foregroundApp';
@@ -90,34 +80,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLaunchAtStartup: (value: boolean): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(CONFIG_SET_LAUNCH_AT_STARTUP, value),
 
+  setHardwareAcceleration: (value: boolean): Promise<GraphicsAccelerationStatus> =>
+    ipcRenderer.invoke(CONFIG_SET_HARDWARE_ACCELERATION, value),
+
+  getGraphicsAccelerationStatus: (): Promise<GraphicsAccelerationStatus> =>
+    ipcRenderer.invoke(GRAPHICS_STATUS_GET),
+
+  relaunchApp: (): Promise<void> => ipcRenderer.invoke(APP_RELAUNCH),
+
   setRingEnabled: (value: boolean): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(CONFIG_SET_RING_ENABLED, value),
 
   setTriggerMode: (value: 'A' | 'B'): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(CONFIG_SET_TRIGGER_MODE, value),
-
-  /** Replace all bubbles */
-  setBubbles: (bubbles: BubbleConfig[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(CONFIG_SET_BUBBLES, bubbles),
-
-  /** Update a single bubble */
-  updateBubble: (
-    id: string,
-    patch: Partial<BubbleConfig>
-  ): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(CONFIG_UPDATE_BUBBLE, { id, patch }),
-
-  /** Add a new bubble */
-  addBubble: (bubble: BubbleConfig): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(CONFIG_ADD_BUBBLE, bubble),
-
-  /** Remove a bubble by id */
-  removeBubble: (id: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(CONFIG_REMOVE_BUBBLE, id),
-
-  /** Reorder bubbles by providing new ordered id list */
-  reorderBubbles: (orderedIds: string[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(CONFIG_REORDER_BUBBLES, orderedIds),
 
   // --- Dialogs ---
 
@@ -151,40 +126,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(DASHBOARD_CLOSE_REQUESTED, listener);
     return () => ipcRenderer.removeListener(DASHBOARD_CLOSE_REQUESTED, listener);
   },
-
-  // --- Per-App Profiles ---
-
-  /** Get all app profiles */
-  getAppProfiles: (): Promise<AppProfile[]> =>
-    ipcRenderer.invoke(PROFILE_GET_ALL),
-
-  /** Add a new app profile */
-  addAppProfile: (profile: AppProfile): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_ADD, profile),
-
-  /** Update an app profile */
-  updateAppProfile: (id: string, patch: Partial<AppProfile>): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_UPDATE, { id, patch }),
-
-  /** Remove an app profile */
-  removeAppProfile: (id: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_REMOVE, id),
-
-  /** Replace all bubbles in a profile */
-  setProfileBubbles: (profileId: string, bubbles: BubbleConfig[]): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_SET_BUBBLES, { profileId, bubbles }),
-
-  /** Update a single bubble in a profile */
-  updateProfileBubble: (profileId: string, bubbleId: string, patch: Partial<BubbleConfig>): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_UPDATE_BUBBLE, { profileId, bubbleId, patch }),
-
-  /** Add a bubble to a profile */
-  addProfileBubble: (profileId: string, bubble: BubbleConfig): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_ADD_BUBBLE, { profileId, bubble }),
-
-  /** Remove a bubble from a profile */
-  removeProfileBubble: (profileId: string, bubbleId: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(PROFILE_REMOVE_BUBBLE, { profileId, bubbleId }),
 
   // --- App Detection ---
 

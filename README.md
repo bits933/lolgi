@@ -86,6 +86,23 @@ The installer is written to:
 release/Lolgi Action Ring Setup <version>.exe
 ```
 
+To build a native MSI for managed or enterprise deployment:
+
+```powershell
+Set-Location "windows app"
+npm run dist:msi
+```
+
+The MSI is written to:
+
+```text
+release/Lolgi Action Ring Setup <version>.msi
+```
+
+The MSI is unsigned unless release signing credentials are configured. An MSI
+submitted through the Microsoft Store must be Authenticode-signed; use an MSIX
+submission instead if you need Store-provided signing.
+
 ## Verify the build
 
 ```powershell

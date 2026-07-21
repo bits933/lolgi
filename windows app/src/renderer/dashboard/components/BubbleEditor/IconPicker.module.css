@@ -14,17 +14,17 @@
   flex: 1;
   height: var(--control-md);
   background: var(--bg-surface-raised);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   padding: 0 12px;
   font-size: var(--fs-base);
   color: var(--text-primary);
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: border-color 150ms ease-out;
 }
 
 .search:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-muted);
+  border-color: var(--input-border-focus);
+  box-shadow: none;
 }
 
 .resultCount {

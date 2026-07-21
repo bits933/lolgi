@@ -1,10 +1,11 @@
-import { shell } from 'electron';
+import { app, shell } from 'electron';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { getCachedForegroundApp } from '../utils/foregroundApp';
 
 const execAsync = promisify(exec);
+const openedUrlHandlers = new Map<string, string>();
 
 // ---------------------------------------------------------------------------
 // PowerShell helper — mirrors utils/foregroundApp.ts: pass the script as a
@@ -192,7 +193,17 @@ export async function openUrl(url: string): Promise<void> {
   if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
     throw new Error('Only http, https, and mailto URLs are allowed.');
   }
-  await shell.openExternal(parsed.toString());
+  const targetUrl = parsed.toString();
+  const isWebUrl = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  const previousHandler = isWebUrl ? openedUrlHandlers.get(targetUrl) : undefined;
+  if (previousHandler && await focusRunningApp(previousHandler)) return;
+
+  const handler = isWebUrl
+    ? await app.getApplicationInfoForProtocol(targetUrl).then((info) => info.path).catch(() => '')
+    : '';
+  await shell.openExternal(targetUrl);
+  if (handler) openedUrlHandlers.set(targetUrl, handler);
+  else openedUrlHandlers.delete(targetUrl);
 }
 
 export async function openPath(targetPath: string): Promise<void> {

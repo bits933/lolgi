@@ -8,20 +8,17 @@ import {
   OVERLAY_CLOSE,
   OVERLAY_ANIMATION_COMPLETE,
   SYSTEM_GET_STATE,
-  CONFIG_GET_BUBBLES,
   CONFIG_GET,
   CONFIG_SET_HOTKEY,
   CONFIG_SET_LABEL_SIZE,
   CONFIG_SET_RING_SIZE,
   CONFIG_SET_THEME,
   CONFIG_SET_LAUNCH_AT_STARTUP,
+  CONFIG_SET_HARDWARE_ACCELERATION,
   CONFIG_SET_RING_ENABLED,
   CONFIG_SET_TRIGGER_MODE,
-  CONFIG_SET_BUBBLES,
-  CONFIG_UPDATE_BUBBLE,
-  CONFIG_ADD_BUBBLE,
-  CONFIG_REMOVE_BUBBLE,
-  CONFIG_REORDER_BUBBLES,
+  GRAPHICS_STATUS_GET,
+  APP_RELAUNCH,
   DIALOG_PICK_FILE,
   DIALOG_PICK_FOLDER,
   PROFILE_V2_SAVE,
@@ -30,14 +27,6 @@ import {
   PROFILE_V2_SET_GLOBAL,
   DASHBOARD_SET_DIRTY,
   DASHBOARD_CLOSE_APPROVE,
-  PROFILE_GET_ALL,
-  PROFILE_ADD,
-  PROFILE_UPDATE,
-  PROFILE_REMOVE,
-  PROFILE_SET_BUBBLES,
-  PROFILE_UPDATE_BUBBLE,
-  PROFILE_ADD_BUBBLE,
-  PROFILE_REMOVE_BUBBLE,
   APP_DETECT_FOREGROUND,
   APP_LIST_RUNNING,
   APP_LIST_INSTALLED,
@@ -48,8 +37,6 @@ import {
 import type {
   ActionExecutePayload,
   ActionResult,
-  AppProfile,
-  BubbleConfig,
   ForegroundWindowTarget,
   LabelSize,
   RingProfile,
@@ -65,26 +52,18 @@ import {
   setRingSize,
   setTheme,
   setLaunchAtStartup,
+  setHardwareAcceleration,
   setRingEnabled,
   setTriggerMode,
-  setBubbles,
-  updateBubble,
-  addBubble,
-  removeBubble,
-  reorderBubbles,
-  getAppProfiles,
-  addAppProfile,
-  updateAppProfile,
-  removeAppProfile,
-  setProfileBubbles,
-  updateProfileBubble,
-  addProfileBubble,
-  removeProfileBubble,
   saveProfile,
   addProfile,
   removeProfile,
   setSelectedGlobalProfile,
 } from './store';
+import {
+  getGraphicsAccelerationStatus,
+  waitForGraphicsAccelerationStatus,
+} from './hardwareAcceleration';
 import {
   approveDashboardClose,
   completeOverlayClose,
@@ -263,10 +242,6 @@ export function registerIpcHandlers(): void {
     return await getSystemState();
   });
 
-  ipcMain.handle(CONFIG_GET_BUBBLES, () => {
-    return getConfig().bubbles;
-  });
-
   // ---------------------------------------------------------------------------
   // Dashboard → Main
   // ---------------------------------------------------------------------------
@@ -303,6 +278,24 @@ export function registerIpcHandlers(): void {
     return { success: true };
   });
 
+  ipcMain.handle(CONFIG_SET_HARDWARE_ACCELERATION, (_event, value: unknown) => {
+    if (typeof value !== 'boolean') {
+      throw new TypeError('Hardware acceleration preference must be a boolean.');
+    }
+    setHardwareAcceleration(value);
+    return getGraphicsAccelerationStatus(value);
+  });
+
+  ipcMain.handle(GRAPHICS_STATUS_GET, async () => {
+    await waitForGraphicsAccelerationStatus(getConfig().hardwareAcceleration);
+    return getGraphicsAccelerationStatus(getConfig().hardwareAcceleration);
+  });
+
+  ipcMain.handle(APP_RELAUNCH, () => {
+    app.relaunch();
+    app.exit(0);
+  });
+
   ipcMain.handle(CONFIG_SET_RING_ENABLED, (_event, value: boolean) => {
     if (value) {
       const success = registerHotkey();
@@ -317,31 +310,6 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(CONFIG_SET_TRIGGER_MODE, (_event, value: 'A' | 'B') => {
     setTriggerMode(value);
-    return { success: true };
-  });
-
-  ipcMain.handle(CONFIG_SET_BUBBLES, (_event, bubbles: BubbleConfig[]) => {
-    setBubbles(bubbles);
-    return { success: true };
-  });
-
-  ipcMain.handle(CONFIG_UPDATE_BUBBLE, (_event, { id, patch }: { id: string; patch: Partial<BubbleConfig> }) => {
-    updateBubble(id, patch);
-    return { success: true };
-  });
-
-  ipcMain.handle(CONFIG_ADD_BUBBLE, (_event, bubble: BubbleConfig) => {
-    addBubble(bubble);
-    return { success: true };
-  });
-
-  ipcMain.handle(CONFIG_REMOVE_BUBBLE, (_event, id: string) => {
-    removeBubble(id);
-    return { success: true };
-  });
-
-  ipcMain.handle(CONFIG_REORDER_BUBBLES, (_event, orderedIds: string[]) => {
-    reorderBubbles(orderedIds);
     return { success: true };
   });
 
@@ -378,49 +346,6 @@ export function registerIpcHandlers(): void {
 
   ipcMain.on(DASHBOARD_CLOSE_APPROVE, () => {
     approveDashboardClose();
-  });
-
-  // ---------------------------------------------------------------------------
-  // Profile CRUD (Dashboard → Main)
-  // ---------------------------------------------------------------------------
-
-  ipcMain.handle(PROFILE_GET_ALL, () => {
-    return getAppProfiles();
-  });
-
-  ipcMain.handle(PROFILE_ADD, (_event, profile: AppProfile) => {
-    addAppProfile(profile);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_UPDATE, (_event, { id, patch }: { id: string; patch: Partial<AppProfile> }) => {
-    updateAppProfile(id, patch);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_REMOVE, (_event, id: string) => {
-    removeAppProfile(id);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_SET_BUBBLES, (_event, { profileId, bubbles }: { profileId: string; bubbles: BubbleConfig[] }) => {
-    setProfileBubbles(profileId, bubbles);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_UPDATE_BUBBLE, (_event, { profileId, bubbleId, patch }: { profileId: string; bubbleId: string; patch: Partial<BubbleConfig> }) => {
-    updateProfileBubble(profileId, bubbleId, patch);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_ADD_BUBBLE, (_event, { profileId, bubble }: { profileId: string; bubble: BubbleConfig }) => {
-    addProfileBubble(profileId, bubble);
-    return { success: true };
-  });
-
-  ipcMain.handle(PROFILE_REMOVE_BUBBLE, (_event, { profileId, bubbleId }: { profileId: string; bubbleId: string }) => {
-    removeProfileBubble(profileId, bubbleId);
-    return { success: true };
   });
 
   // ---------------------------------------------------------------------------

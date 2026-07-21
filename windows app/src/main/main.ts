@@ -4,6 +4,7 @@ import { createTray } from './tray';
 import { registerHotkey, unregisterAll } from './globalShortcut';
 import { registerIpcHandlers } from './ipc';
 import { getConfig } from './store';
+import { initializeHardwareAcceleration } from './hardwareAcceleration';
 import { startForegroundAppWatcher, stopForegroundAppWatcher } from './utils/foregroundApp';
 import { healPersistedAppIcons } from './utils/iconHeal';
 import { formatRuntimeBuildIdentity, getRuntimeBuildIdentity } from './buildIdentity';
@@ -56,6 +57,9 @@ if (!gotLock) {
 }
 
 function startPrimaryInstance(): void {
+  // This must happen before app.whenReady(): Electron cannot change GPU mode live.
+  const startupConfig = getConfig();
+  initializeHardwareAcceleration(app, startupConfig.hardwareAcceleration);
   console.log(`[main] Lolgi Action Ring starting | ${formatRuntimeBuildIdentity(startupIdentity)}`);
 
   app.on('second-instance', (_event, _argv, _workingDirectory, additionalData) => {
@@ -93,7 +97,7 @@ function startPrimaryInstance(): void {
       createTray();
       showDashboard();
 
-      const config = getConfig();
+      const config = startupConfig;
       if (config.ringEnabled) {
         const success = registerHotkey(config.hotkey);
         if (!success) console.warn(`[main] Failed to register hotkey: ${config.hotkey}`);

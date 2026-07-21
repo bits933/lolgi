@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 import {
   AppWindow,
   Crosshair,
@@ -36,15 +35,15 @@ interface SelectedApplication {
 
 function cloneSlots(slots: RingSlot[]): RingSlot[] {
   return slots.map((slot, position) => ({
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     position,
     assignment: slot.assignment
       ? {
           ...slot.assignment,
-          id: uuidv4(),
+          id: crypto.randomUUID(),
           children: slot.assignment.children?.map((child, angleIndex) => ({
             ...child,
-            id: uuidv4(),
+            id: crypto.randomUUID(),
             angleIndex,
           })),
         }
@@ -191,7 +190,7 @@ export function NewProfileModal({
 
     const slots = layout === 'general' ? cloneSlots(generalProfile.slots) : createEmptySlots();
     const profile: RingProfile = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       name: name.trim(),
       kind,
       enabled: true,

@@ -4,25 +4,16 @@ import { copyFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import type {
   AppConfig,
-  AppProfile,
-  BubbleConfig,
   LabelSize,
   MutationResult,
   RingProfile,
   RingSize,
   ThemeConfig,
 } from '../shared/types';
-import {
-  appProfileToRingProfile,
-  bubblesToSlots,
-  normalizeProcessName,
-  ringProfileToAppProfile,
-  slotsToBubbles,
-} from '../shared/profileUtils';
+import { normalizeProcessName } from '../shared/profileUtils';
 import {
   createDefaultConfig,
   migrateConfig,
-  syncCompatibilityViews,
   validateProfile,
 } from './configMigration';
 
@@ -54,12 +45,11 @@ export function getConfigStore(): Store<AppConfig> {
 }
 
 function writeConfig(config: AppConfig): AppConfig {
-  const normalized = syncCompatibilityViews(config);
   // Keep reads on the hot path entirely in memory. `set` preserves unrelated
   // store metadata (for example the icon-heal marker) that is not AppConfig.
-  getConfigStore().set(normalized);
-  cachedConfig = normalized;
-  return normalized;
+  getConfigStore().set(config);
+  cachedConfig = config;
+  return config;
 }
 
 export function getConfig(): AppConfig {
@@ -102,6 +92,10 @@ export function setTheme(theme: ThemeConfig): void {
 
 export function setLaunchAtStartup(value: boolean): void {
   writeConfig({ ...getConfig(), launchAtStartup: value });
+}
+
+export function setHardwareAcceleration(value: boolean): void {
+  writeConfig({ ...getConfig(), hardwareAcceleration: value });
 }
 
 export function setRingEnabled(value: boolean): void {
@@ -195,97 +189,4 @@ export function setSelectedGlobalProfile(id: string | null): MutationResult {
   }
   writeConfig({ ...config, selectedGlobalProfileId: id });
   return { status: 'ok' };
-}
-
-// ---------------------------------------------------------------------------
-// Legacy compatibility mutations. Dashboard V2 does not call these directly.
-// ---------------------------------------------------------------------------
-
-export function setBubbles(bubbles: BubbleConfig[]): void {
-  const config = getConfig();
-  const profiles = config.profiles.map((profile) =>
-    profile.id === config.generalProfileId ? { ...profile, slots: bubblesToSlots(bubbles) } : profile
-  );
-  writeConfig({ ...config, profiles });
-}
-
-export function updateBubble(id: string, patch: Partial<BubbleConfig>): MutationResult {
-  const config = getConfig();
-  const general = config.profiles.find((profile) => profile.id === config.generalProfileId);
-  if (!general) return { status: 'not_found', message: 'General profile not found.' };
-  const bubbles = slotsToBubbles(general.slots);
-  const index = bubbles.findIndex((bubble) => bubble.id === id);
-  if (index === -1) return { status: 'not_found', message: 'Bubble not found.' };
-  bubbles[index] = { ...bubbles[index], ...patch };
-  setBubbles(bubbles);
-  return { status: 'ok' };
-}
-
-export function addBubble(bubble: BubbleConfig): void {
-  setBubbles([...getConfig().bubbles, bubble]);
-}
-
-export function removeBubble(id: string): MutationResult {
-  const current = getConfig().bubbles;
-  if (!current.some((bubble) => bubble.id === id)) return { status: 'not_found', message: 'Bubble not found.' };
-  setBubbles(current.filter((bubble) => bubble.id !== id));
-  return { status: 'ok' };
-}
-
-export function reorderBubbles(orderedIds: string[]): void {
-  const map = new Map(getConfig().bubbles.map((bubble) => [bubble.id, bubble]));
-  setBubbles(orderedIds.flatMap((id) => {
-    const bubble = map.get(id);
-    return bubble ? [bubble] : [];
-  }));
-}
-
-export function getAppProfiles(): AppProfile[] {
-  return getConfig().appProfiles;
-}
-
-export function addAppProfile(profile: AppProfile): MutationResult<RingProfile> {
-  return addProfile(appProfileToRingProfile(profile));
-}
-
-export function updateAppProfile(id: string, patch: Partial<AppProfile>): MutationResult<RingProfile> {
-  const current = getConfig().profiles.find((profile) => profile.id === id);
-  if (!current || current.kind !== 'application') return { status: 'not_found', message: 'Profile not found.' };
-  const legacy = ringProfileToAppProfile(current);
-  if (!legacy) return { status: 'validation_error', message: 'Invalid application profile.' };
-  return saveProfile(appProfileToRingProfile({ ...legacy, ...patch }));
-}
-
-export function removeAppProfile(id: string): MutationResult {
-  return removeProfile(id);
-}
-
-export function setProfileBubbles(profileId: string, bubbles: BubbleConfig[]): MutationResult<RingProfile> {
-  const profile = getConfig().profiles.find((item) => item.id === profileId);
-  if (!profile) return { status: 'not_found', message: 'Profile not found.' };
-  return saveProfile({ ...profile, slots: bubblesToSlots(bubbles) });
-}
-
-export function updateProfileBubble(profileId: string, bubbleId: string, patch: Partial<BubbleConfig>): MutationResult<RingProfile> {
-  const profile = getConfig().profiles.find((item) => item.id === profileId);
-  if (!profile) return { status: 'not_found', message: 'Profile not found.' };
-  const bubbles = slotsToBubbles(profile.slots);
-  const index = bubbles.findIndex((bubble) => bubble.id === bubbleId);
-  if (index === -1) return { status: 'not_found', message: 'Bubble not found.' };
-  bubbles[index] = { ...bubbles[index], ...patch };
-  return saveProfile({ ...profile, slots: bubblesToSlots(bubbles) });
-}
-
-export function addProfileBubble(profileId: string, bubble: BubbleConfig): MutationResult<RingProfile> {
-  const profile = getConfig().profiles.find((item) => item.id === profileId);
-  if (!profile) return { status: 'not_found', message: 'Profile not found.' };
-  return saveProfile({ ...profile, slots: bubblesToSlots([...slotsToBubbles(profile.slots), bubble]) });
-}
-
-export function removeProfileBubble(profileId: string, bubbleId: string): MutationResult<RingProfile> {
-  const profile = getConfig().profiles.find((item) => item.id === profileId);
-  if (!profile) return { status: 'not_found', message: 'Profile not found.' };
-  const bubbles = slotsToBubbles(profile.slots);
-  if (!bubbles.some((bubble) => bubble.id === bubbleId)) return { status: 'not_found', message: 'Bubble not found.' };
-  return saveProfile({ ...profile, slots: bubblesToSlots(bubbles.filter((bubble) => bubble.id !== bubbleId)) });
 }

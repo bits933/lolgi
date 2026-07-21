@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { AI_BRAND_ICONS, AI_PROVIDERS } from './brandIcons';
 import { MAX_FOLDER_CHILDREN } from './constants';
 import { APP_ACTION_CATALOG } from './defaultProfiles';
@@ -219,7 +218,7 @@ export function createAssignmentFromDefinition(definitionId: string): ActionAssi
   const defaultAiProvider = item.id === 'ai-launcher' ? AI_PROVIDERS[0] : null;
   if (defaultAiProvider) parameters.aiProvider = defaultAiProvider.id;
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     definitionId: item.id,
     label: defaultAiProvider?.label ?? item.label,
     iconName: item.iconName,

@@ -1,6 +1,6 @@
 {
   "name": "logi-actions-ring",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Lolgi Action Ring — Electron Desktop App",
   "main": "dist/main-bundled.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "release:prepare": "npm run build:identity && npm run validate && npm run build:artifacts",
     "pack": "npm run release:prepare && electron-builder --config electron-builder.yml --dir && npm run verify:package",
     "dist": "npm run release:prepare && electron-builder --config electron-builder.yml && npm run verify:package && npm run release:manifest",
+    "dist:msi": "npm run release:prepare && electron-builder --config electron-builder.yml --win msi && npm run verify:package",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
   },
@@ -32,7 +33,6 @@
     "lucide-react": "0.446.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "uuid": "11.1.1",
     "zustand": "4.5.7"
   },
   "devDependencies": {

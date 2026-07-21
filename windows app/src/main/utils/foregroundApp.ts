@@ -1029,16 +1029,6 @@ export function stopForegroundAppWatcher(): void {
   watcherReadyPromise = null;
 }
 
-/** @deprecated Compatibility alias; use startForegroundAppWatcher. */
-export function startForegroundAppPolling(_intervalMs = 1000): void {
-  void startForegroundAppWatcher();
-}
-
-/** @deprecated Compatibility alias; use stopForegroundAppWatcher. */
-export function stopForegroundAppPolling(): void {
-  stopForegroundAppWatcher();
-}
-
 export const __foregroundTrackerTestApi = {
   reset(): void {
     stopForegroundAppWatcher();

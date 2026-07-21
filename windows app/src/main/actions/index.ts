@@ -12,6 +12,7 @@ import {
   executeKeyboardSequence,
   executeKeyboardShortcutAsync,
   executeKeyboardTextAsync,
+  executeKeyboardTypeAsync,
   TargetFocusError,
 } from './keyboard';
 import { launchApp, launchOrFocusApp, openPath, openUrl, runCommand } from './launcher';
@@ -67,6 +68,8 @@ async function executeMacro(
       await openPath(entry.slice(entry.indexOf(':') + 1).trim());
     } else if (entry.startsWith('command:')) {
       await runCommand(entry.slice(8).trim());
+    } else if (entry.startsWith('keys:')) {
+      receipts.push(...(await executeKeyboardTypeAsync(entry.slice(5), target)));
     } else if (entry.startsWith('text:')) {
       receipts.push(await executeKeyboardTextAsync(entry.slice(5), target));
     } else {

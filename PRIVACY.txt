@@ -1,0 +1,120 @@
+PRIVACY POLICY FOR LOLGI ACTION RING
+
+Last updated: July 20, 2026
+
+Before publishing this policy, replace [Publisher legal name] and
+[privacy contact email] below with the correct information.
+
+Lolgi Action Ring is a Windows desktop application that lets you configure
+and trigger shortcut, application, file, folder, URL, and system actions.
+This policy explains how [Publisher legal name] ("we", "us", or "our")
+handles information when you use the application.
+
+SUMMARY
+
+Lolgi Action Ring is local-first. It does not require an account, does not
+include advertising, and does not send analytics, usage telemetry, or your
+action configuration to us. Most information stays on your Windows device.
+
+The app makes network requests only when you choose a feature that needs an
+external service, such as searching Iconify for an icon or obtaining a favicon
+for a URL action. Those requests are described below.
+
+INFORMATION STORED ON YOUR DEVICE
+
+Lolgi Action Ring stores its configuration in its local Windows application
+data folder. Depending on what you configure, this can include:
+
+- Ring profiles, hotkey, visual settings, and enabled actions.
+- Labels, icons, shortcuts, macro text, command text, URLs, and file or folder
+  paths you assign to actions.
+- Application-profile information such as a detected application's process name
+  and executable path.
+
+This information is used only to provide the app's configured functionality.
+It is not automatically uploaded to us.
+
+DIAGNOSTICS
+
+The app retains up to 100 recent diagnostic events locally to help explain
+action and ring failures. These may include timestamps, action type and result,
+profile name or ID, process name, executable path, application/window state,
+and build information. The diagnostic log is stored locally in the app's
+application-data folder.
+
+The app does not upload diagnostic events. If you choose Copy last diagnostic,
+the selected diagnostic information is copied to your Windows clipboard so that
+you can decide whether to share it with support or another person.
+
+OPERATING-SYSTEM ACCESS
+
+To provide its features, the app may access or use Windows functionality to:
+
+- Detect the foreground application and its executable path to select a ring
+  profile.
+- Read local application, file, or folder icons that you choose to use.
+- Open a file, folder, application, command, or URL when you trigger an action.
+- Send the keyboard shortcut or sequence you configured to the target
+  application.
+- Copy a diagnostic report to the clipboard when you explicitly request it.
+
+The app does not read the contents of your clipboard. A configured paste action
+sends the normal paste shortcut to the target application; it does not inspect
+the clipboard contents.
+
+OPTIONAL THIRD-PARTY NETWORK REQUESTS
+
+The following requests occur only when you use the related feature:
+
+- Icon search or icon download: Iconify API (api.iconify.design). Your icon
+  search terms and requested icon identifiers are sent, together with normal
+  connection information such as your IP address.
+- URL-action favicon lookup: Google Favicon service, with DuckDuckGo Icons as
+  a fallback. The hostname of the URL you entered is sent, together with normal
+  connection information such as your IP address.
+- Opening a URL action: Your selected browser and the destination website
+  receive the URL you configured. The browser and destination site's own
+  privacy policies apply.
+
+These providers process requests under their own privacy policies. We do not
+receive the information sent to them merely because you use these features.
+You can avoid the icon and favicon requests by not using those optional
+features.
+
+SHARING AND SALE OF INFORMATION
+
+We do not sell personal information. We do not operate an app backend that
+receives your configuration, diagnostic logs, action history, or foreground-app
+information. We share information only when you direct the app to use an
+external service or open a destination you configured, as described above.
+
+RETENTION AND DELETION
+
+Your configuration and local diagnostics remain on your device until you change
+or delete them, or remove the app's local data. Uninstalling the app may not
+remove that local data automatically. Diagnostic retention is capped at 100
+events, with newer events replacing older events.
+
+SECURITY
+
+We design the app to keep configuration and diagnostics local. No security
+method is perfect, so protect your Windows account and device, especially if
+your action configuration contains sensitive paths, commands, or URLs.
+
+CHILDREN'S PRIVACY
+
+Lolgi Action Ring is not directed to children and does not knowingly collect
+personal information from children.
+
+CHANGES TO THIS POLICY
+
+We may update this policy when the app's data practices change. The revised
+policy will show a new "Last updated" date.
+
+CONTACT
+
+For privacy questions or requests, contact [Publisher legal name] at
+[privacy contact email].
+
+Depending on where you live, you may have privacy rights under applicable law.
+Use the contact details above to make a request or raise a concern.

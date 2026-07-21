@@ -142,8 +142,8 @@ function createConfig(): AppConfig {
     selectedGlobalProfileId: null,
     profiles: [general, oldApp, newApp],
     hotkey: 'CommandOrControl+Space',
-    bubbles: [],
     launchAtStartup: false,
+    hardwareAcceleration: true,
     ringEnabled: true,
     triggerMode: 'A',
     ringSize: 'medium',
@@ -153,7 +153,6 @@ function createConfig(): AppConfig {
       accentColor: '#6750a4',
       bubbleColor: '#242424',
     },
-    appProfiles: [],
   };
 }
 

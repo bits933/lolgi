@@ -22,7 +22,6 @@ export interface OverlayElectronAPI {
   closeOverlay: () => void;
   notifyAnimationComplete: () => void;
   getSystemState: () => Promise<SystemState>;
-  getBubbles: () => Promise<BubbleConfig[]>;
 }
 
 declare global {

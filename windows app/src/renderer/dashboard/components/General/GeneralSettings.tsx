@@ -32,6 +32,11 @@ function formatBuildTime(value: string): string {
   return Number.isNaN(date.getTime()) ? 'unknown build time' : date.toISOString();
 }
 
+function isGpuFeatureEnabled(value: string | null): boolean {
+  // Electron reports several GPU-backed states, including enabled_readback.
+  return value?.startsWith('enabled') ?? false;
+}
+
 export function GeneralSettings(): React.ReactElement {
   const config = useDashboardStore((state) => state.config);
   const setRingSize = useDashboardStore((state) => state.setRingSize);
@@ -40,6 +45,12 @@ export function GeneralSettings(): React.ReactElement {
   const setLaunchAtStartup = useDashboardStore((state) => state.setLaunchAtStartup);
   const setRingEnabled = useDashboardStore((state) => state.setRingEnabled);
   const setTriggerMode = useDashboardStore((state) => state.setTriggerMode);
+  const graphicsStatus = useDashboardStore((state) => state.graphicsStatus);
+  const isGraphicsStatusLoading = useDashboardStore((state) => state.isGraphicsStatusLoading);
+  const isRelaunching = useDashboardStore((state) => state.isRelaunching);
+  const loadGraphicsAccelerationStatus = useDashboardStore((state) => state.loadGraphicsAccelerationStatus);
+  const setHardwareAcceleration = useDashboardStore((state) => state.setHardwareAcceleration);
+  const relaunchApp = useDashboardStore((state) => state.relaunchApp);
   const saveProfile = useDashboardStore((state) => state.saveProfile);
   const [buildIdentity, setBuildIdentity] = useState<RuntimeBuildIdentity | null>(null);
   const [diagnosticStatus, setDiagnosticStatus] = useState('');
@@ -59,12 +70,29 @@ export function GeneralSettings(): React.ReactElement {
     };
   }, []);
 
+  useEffect(() => {
+    void loadGraphicsAccelerationStatus();
+  }, [loadGraphicsAccelerationStatus]);
+
   if (!config) return <div className={styles.loading}>Loading settings...</div>;
 
   const generalProfile = config.profiles.find((profile) => profile.id === config.generalProfileId);
   const themeMode = config.theme?.mode ?? 'dark';
   const accentColor = config.theme?.accentColor ?? DEFAULT_ACCENT_COLOR;
   const bubbleColor = config.theme?.bubbleColor ?? DEFAULT_BUBBLE_COLOR;
+  const graphicsStatusLabel = graphicsStatus?.restartRequired
+    ? 'Restart required'
+    : isGraphicsStatusLoading || !graphicsStatus
+      ? 'Checking graphics status'
+      : !graphicsStatus.statusReady
+        ? 'Graphics status unavailable'
+        : !graphicsStatus.preferenceEnabled
+          ? 'Software rendering'
+          : graphicsStatus.hardwareAccelerationEnabled
+            && isGpuFeatureEnabled(graphicsStatus.gpuCompositing)
+            && isGpuFeatureEnabled(graphicsStatus.rasterization)
+            ? 'Hardware accelerated'
+            : 'Unavailable or driver-blocked';
 
   const applyTheme = (patch: Partial<ThemeConfig>) => {
     void setTheme({ mode: themeMode, accentColor, bubbleColor, ...patch });
@@ -175,6 +203,31 @@ export function GeneralSettings(): React.ReactElement {
                 <span />
               </label>
             </div>
+            <div className={styles.row}>
+              <div>
+                <strong>Hardware acceleration</strong>
+                <small>Use GPU rendering for the Action Ring and dashboard. Recommended for smoother animation.</small>
+                <small id="hardware-acceleration-status" aria-live="polite">{graphicsStatusLabel}</small>
+              </div>
+              <label className={styles.toggle}>
+                <input
+                  type="checkbox"
+                  checked={config.hardwareAcceleration}
+                  onChange={(event) => void setHardwareAcceleration(event.target.checked)}
+                  aria-label="Hardware acceleration"
+                  aria-describedby="hardware-acceleration-status"
+                />
+                <span />
+              </label>
+            </div>
+            {graphicsStatus?.restartRequired && (
+              <div className={styles.row}>
+                <div><strong>Restart required</strong><small>Restart Lolgi Action Ring to apply the new graphics mode.</small></div>
+                <button type="button" className={styles.diagnosticButton} onClick={() => void relaunchApp()} disabled={isRelaunching}>
+                  {isRelaunching ? 'Restarting...' : 'Restart now'}
+                </button>
+              </div>
+            )}
           </section>
 
           <section className={styles.card}>

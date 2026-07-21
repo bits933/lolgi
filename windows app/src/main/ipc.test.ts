@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ACTION_EXECUTE,
-  CONFIG_SET_BUBBLES,
-  CONFIG_UPDATE_BUBBLE,
+  APP_RELAUNCH,
+  CONFIG_SET_HARDWARE_ACCELERATION,
+  GRAPHICS_STATUS_GET,
   OVERLAY_ANIMATION_COMPLETE,
   OVERLAY_CLOSE,
 } from '../shared/ipcChannels';
@@ -18,6 +19,8 @@ const electronHarness = vi.hoisted(() => ({
   handlers: new Map<string, (...args: any[]) => any>(),
   listeners: new Map<string, (...args: any[]) => any>(),
   getFocusedWindow: vi.fn(),
+  relaunch: vi.fn(),
+  exit: vi.fn(),
 }));
 
 const actionHarness = vi.hoisted(() => ({
@@ -55,8 +58,13 @@ const diagnosticsHarness = vi.hoisted(() => ({
 }));
 
 const storeHarness = vi.hoisted(() => ({
-  setBubbles: vi.fn(),
-  updateBubble: vi.fn(),
+  getConfig: vi.fn(() => ({ hardwareAcceleration: true })),
+  setHardwareAcceleration: vi.fn(),
+}));
+
+const graphicsHarness = vi.hoisted(() => ({
+  getGraphicsAccelerationStatus: vi.fn(),
+  waitForGraphicsAccelerationStatus: vi.fn(),
 }));
 
 vi.mock('electron', () => {
@@ -68,6 +76,8 @@ vi.mock('electron', () => {
   return {
     app: {
       setLoginItemSettings: vi.fn(),
+      relaunch: electronHarness.relaunch,
+      exit: electronHarness.exit,
     },
     ipcMain: {
       handle: electronHarness.handle,
@@ -115,31 +125,20 @@ vi.mock('./buildIdentity', () => ({
   getRuntimeBuildIdentity: vi.fn(),
 }));
 vi.mock('./store', () => ({
-  getConfig: vi.fn(() => ({ bubbles: [] })),
+  getConfig: storeHarness.getConfig,
   setHotkey: vi.fn(),
   setRingSize: vi.fn(),
   setTheme: vi.fn(),
   setLaunchAtStartup: vi.fn(),
+  setHardwareAcceleration: storeHarness.setHardwareAcceleration,
   setRingEnabled: vi.fn(),
   setTriggerMode: vi.fn(),
-  setBubbles: storeHarness.setBubbles,
-  updateBubble: storeHarness.updateBubble,
-  addBubble: vi.fn(),
-  removeBubble: vi.fn(),
-  reorderBubbles: vi.fn(),
-  getAppProfiles: vi.fn(() => []),
-  addAppProfile: vi.fn(),
-  updateAppProfile: vi.fn(),
-  removeAppProfile: vi.fn(),
-  setProfileBubbles: vi.fn(),
-  updateProfileBubble: vi.fn(),
-  addProfileBubble: vi.fn(),
-  removeProfileBubble: vi.fn(),
   saveProfile: vi.fn(),
   addProfile: vi.fn(),
   removeProfile: vi.fn(),
   setSelectedGlobalProfile: vi.fn(),
 }));
+vi.mock('./hardwareAcceleration', () => graphicsHarness);
 vi.mock('./globalShortcut', () => ({
   registerHotkey: vi.fn(() => true),
   unregisterHotkey: vi.fn(),
@@ -375,35 +374,43 @@ describe('ring session IPC action chain', () => {
     );
   });
 
-  it('persists legacy General bubble edits without replacing a live ring payload', () => {
-    const setBubblesHandler = electronHarness.handlers.get(CONFIG_SET_BUBBLES);
-    const updateBubbleHandler = electronHarness.handlers.get(
-      CONFIG_UPDATE_BUBBLE
-    );
-    if (!setBubblesHandler || !updateBubbleHandler) {
-      throw new Error('Legacy bubble handlers were not registered');
-    }
-    const generalBubbles = [
-      {
-        id: 'general-action',
-        label: 'General action',
-        type: 'action',
-        actionType: 'do-nothing',
-      },
-    ] as any;
+  it('persists only boolean hardware-acceleration preferences and reports restart state', () => {
+    const handler = electronHarness.handlers.get(CONFIG_SET_HARDWARE_ACCELERATION);
+    if (!handler) throw new Error('Hardware acceleration handler was not registered');
+    const status = {
+      preferenceEnabled: false,
+      startupPreferenceEnabled: true,
+      restartRequired: true,
+      statusReady: false,
+      hardwareAccelerationEnabled: null,
+      gpuCompositing: null,
+      rasterization: null,
+    };
+    graphicsHarness.getGraphicsAccelerationStatus.mockReturnValue(status);
 
-    expect(setBubblesHandler({}, generalBubbles)).toEqual({ success: true });
-    expect(
-      updateBubbleHandler({}, {
-        id: 'general-action',
-        patch: { label: 'Updated General action' },
-      })
-    ).toEqual({ success: true });
-
-    expect(storeHarness.setBubbles).toHaveBeenCalledWith(generalBubbles);
-    expect(storeHarness.updateBubble).toHaveBeenCalledWith('general-action', {
-      label: 'Updated General action',
-    });
-    expect(windowHarness.overlay.webContents.send).not.toHaveBeenCalled();
+    expect(handler({}, false)).toEqual(status);
+    expect(storeHarness.setHardwareAcceleration).toHaveBeenCalledWith(false);
+    expect(graphicsHarness.getGraphicsAccelerationStatus).toHaveBeenCalledWith(false);
+    expect(() => handler({}, 'false')).toThrow('must be a boolean');
   });
+
+  it('returns current graphics status and relaunches only through the explicit IPC', async () => {
+    const statusHandler = electronHarness.handlers.get(GRAPHICS_STATUS_GET);
+    const relaunchHandler = electronHarness.handlers.get(APP_RELAUNCH);
+    if (!statusHandler || !relaunchHandler) throw new Error('Graphics handlers were not registered');
+    const status = { preferenceEnabled: false };
+    storeHarness.getConfig
+      .mockReturnValueOnce({ hardwareAcceleration: true })
+      .mockReturnValueOnce({ hardwareAcceleration: false });
+    graphicsHarness.waitForGraphicsAccelerationStatus.mockResolvedValueOnce(status);
+    graphicsHarness.getGraphicsAccelerationStatus.mockReturnValueOnce(status);
+
+    await expect(statusHandler({})).resolves.toBe(status);
+    expect(graphicsHarness.waitForGraphicsAccelerationStatus).toHaveBeenCalledWith(true);
+    expect(graphicsHarness.getGraphicsAccelerationStatus).toHaveBeenCalledWith(false);
+    expect(relaunchHandler({})).toBeUndefined();
+    expect(electronHarness.relaunch).toHaveBeenCalledOnce();
+    expect(electronHarness.exit).toHaveBeenCalledWith(0);
+  });
+
 });

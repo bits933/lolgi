@@ -5,7 +5,7 @@
  * `electron` / `electron-store` (which cannot be imported under Vitest). `store.ts`
  * owns persistence and re-exports nothing from here that touches the filesystem.
  */
-import type { ActionAssignment, AppConfig, BubbleConfig, RingProfile } from '../shared/types';
+import type { ActionAssignment, AppConfig, AppProfile, BubbleConfig, RingProfile } from '../shared/types';
 import { DEFAULT_HOTKEY, DEFAULT_LABEL_SIZE, DEFAULT_RING_SIZE, DEFAULT_THEME } from '../shared/constants';
 import {
   CONFIG_SCHEMA_VERSION,
@@ -15,11 +15,10 @@ import {
   bubbleToAssignment,
   createGeneralProfile,
   normalizeGroupLabel,
-  ringProfileToAppProfile,
-  slotsToBubbles,
 } from '../shared/profileUtils';
 import { ACTION_DEFINITIONS, validateAssignment } from '../shared/actionCatalog';
 import {
+  APP_ACTION_CATALOG,
   FIGMA_ACTIONS_PALETTE_DELAY_MS,
   FIGMA_ACTIONS_SHORTCUT,
   FIGMA_MACRO_QUERIES,
@@ -43,6 +42,20 @@ const CURRENT_FIGMA_MACRO_PAYLOADS: Record<string, string> = {
   'figma-rasterize': `${FIGMA_ACTIONS_SHORTCUT}; delay:${FIGMA_ACTIONS_PALETTE_DELAY_MS}; text:${FIGMA_MACRO_QUERIES.rasterize}; Enter`,
   'figma-same-fill': `${FIGMA_ACTIONS_SHORTCUT}; delay:${FIGMA_ACTIONS_PALETTE_DELAY_MS}; text:${FIGMA_MACRO_QUERIES['same-fill']}; Enter`,
   'figma-version-history': `${FIGMA_ACTIONS_SHORTCUT}; delay:${FIGMA_ACTIONS_PALETTE_DELAY_MS}; text:${FIGMA_MACRO_QUERIES['version-history']}; Enter`,
+};
+
+const AUTOCAD_MACRO_PAYLOADS = new Map(
+  APP_ACTION_CATALOG.flatMap(({ id, appId, actionType, defaultPayload }) =>
+    appId === 'autocad' && actionType === 'macro' && defaultPayload
+      ? [[id, defaultPayload] as const]
+      : []
+  )
+);
+
+/** Shape accepted from pre-V2 config files during one-time migration. */
+type ConfigInput = Partial<AppConfig> & {
+  bubbles?: BubbleConfig[];
+  appProfiles?: AppProfile[];
 };
 
 function migrateFigmaMacroNode<T extends ActionAssignment | BubbleConfig>(node: T): T {
@@ -82,6 +95,50 @@ function migrateFigmaProfile(profile: RingProfile): RingProfile {
   return changed ? { ...profile, slots } : profile;
 }
 
+function migrateAutoCadMacroNode<T extends ActionAssignment | BubbleConfig>(node: T): T {
+  const macroPayload = node.definitionId ? AUTOCAD_MACRO_PAYLOADS.get(node.definitionId) : undefined;
+  // Superseded forms auto-heal to the current macro so every AutoCAD action edits
+  // through the step editor:
+  //  - the original keyboard-sequence split each typed letter out ("keys:PL" was
+  //    once stored as "P; L; Enter")
+  //  - the short-lived text:/Unicode macro ("text:PL; Enter") is silently dropped
+  //    by AutoCAD's command line, which is why it must become keys:
+  //  - any non-macro action whose payload already equals the catalog macro
+  //    verbatim — Save (Ctrl+S), Cancel (Esc; Esc), Repeat last (Enter) — which
+  //    are macros now purely so they too open the multi-step editor.
+  // Custom-edited payloads never match any of these forms, so they are untouched.
+  const sequencePayload = macroPayload?.replace(/keys:([^;]+)/g, (_match, keys: string) => [...keys].join('; '));
+  const unicodePayload = macroPayload?.replace(/keys:/g, 'text:');
+  const shouldMigrate =
+    macroPayload !== undefined &&
+    ((node.actionType !== 'macro' && (node.payload === sequencePayload || node.payload === macroPayload)) ||
+      (node.actionType === 'macro' && node.payload === unicodePayload && unicodePayload !== macroPayload));
+  const migratedChildren = node.children?.map((child) => migrateAutoCadMacroNode(child));
+  const childrenChanged = migratedChildren
+    ? migratedChildren.some((child, index) => child !== node.children?.[index])
+    : false;
+  if (!shouldMigrate && !childrenChanged) return node;
+  return {
+    ...node,
+    ...(shouldMigrate ? { actionType: 'macro' as const, payload: macroPayload } : {}),
+    ...(childrenChanged ? { children: migratedChildren } : {}),
+  } as T;
+}
+
+function migrateAutoCadProfile(profile: RingProfile): RingProfile {
+  const processName = profile.application?.processName?.trim().replace(/\.exe$/i, '').toLowerCase();
+  if (processName !== 'acad') return profile;
+  let changed = false;
+  const slots = profile.slots.map((slot) => {
+    if (!slot.assignment) return slot;
+    const assignment = migrateAutoCadMacroNode(slot.assignment);
+    if (assignment === slot.assignment) return slot;
+    changed = true;
+    return { ...slot, assignment };
+  });
+  return changed ? { ...profile, slots } : profile;
+}
+
 export function createDefaultConfig(): AppConfig {
   const general = createGeneralProfile();
   return {
@@ -90,14 +147,13 @@ export function createDefaultConfig(): AppConfig {
     selectedGlobalProfileId: null,
     profiles: [general],
     hotkey: DEFAULT_HOTKEY,
-    bubbles: [],
     launchAtStartup: false,
+    hardwareAcceleration: true,
     ringEnabled: true,
     triggerMode: 'A',
     ringSize: DEFAULT_RING_SIZE,
     labelSize: DEFAULT_LABEL_SIZE,
     theme: DEFAULT_THEME,
-    appProfiles: [],
   };
 }
 
@@ -135,22 +191,13 @@ export function validateProfile(profile: RingProfile): string | null {
   return null;
 }
 
-export function syncCompatibilityViews(config: AppConfig): AppConfig {
-  const general = config.profiles.find((profile) => profile.id === config.generalProfileId);
-  const bubbles = general ? slotsToBubbles(general.slots) : [];
-  const appProfiles = config.profiles.flatMap((profile) => {
-    const legacy = ringProfileToAppProfile(profile);
-    return legacy ? [legacy] : [];
-  });
-  return { ...config, bubbles, appProfiles };
-}
-
-export function migrateConfig(raw: Partial<AppConfig>): AppConfig {
+export function migrateConfig(raw: ConfigInput): AppConfig {
+  const { bubbles: legacyBubbles, appProfiles: legacyAppProfiles, ...configInput } = raw;
   if (raw.schemaVersion === CONFIG_SCHEMA_VERSION && Array.isArray(raw.profiles)) {
     const hasGeneral = raw.profiles.some((profile) => profile.id === raw.generalProfileId);
     const sourceProfiles = (hasGeneral
       ? raw.profiles
-      : [createGeneralProfile(Array.isArray(raw.bubbles) ? raw.bubbles : []), ...raw.profiles]);
+      : [createGeneralProfile(Array.isArray(legacyBubbles) ? legacyBubbles : []), ...raw.profiles]);
     const profiles = sourceProfiles.map((profile) => {
       if (!profile || typeof profile !== 'object' || !Array.isArray(profile.slots)) {
         throw new Error('A V2 profile is missing its ring slots.');
@@ -170,7 +217,7 @@ export function migrateConfig(raw: Partial<AppConfig>): AppConfig {
           return { ...slot, assignment: { ...slot.assignment, definitionId, label } };
         }),
       };
-      const migratedProfile = migrateFigmaProfile(normalizedProfile);
+      const migratedProfile = migrateAutoCadProfile(migrateFigmaProfile(normalizedProfile));
       const validationError = validateProfile(migratedProfile);
       if (validationError) throw new Error(validationError);
       return migratedProfile;
@@ -178,33 +225,35 @@ export function migrateConfig(raw: Partial<AppConfig>): AppConfig {
     const selectedGlobalProfileId = profiles.some(
       (profile) => profile.id === raw.selectedGlobalProfileId && profile.kind === 'global' && profile.enabled
     ) ? raw.selectedGlobalProfileId ?? null : null;
-    return syncCompatibilityViews({
+    return {
       ...createDefaultConfig(),
-      ...raw,
+      ...configInput,
       schemaVersion: CONFIG_SCHEMA_VERSION,
       generalProfileId: hasGeneral ? raw.generalProfileId ?? GENERAL_PROFILE_ID : GENERAL_PROFILE_ID,
       selectedGlobalProfileId,
       profiles,
+      hardwareAcceleration: typeof raw.hardwareAcceleration === 'boolean' ? raw.hardwareAcceleration : true,
       ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
       labelSize: raw.labelSize ?? DEFAULT_LABEL_SIZE,
       theme: { ...DEFAULT_THEME, ...raw.theme },
-    } as AppConfig);
+    } as AppConfig;
   }
 
-  const legacyBubbles = Array.isArray(raw.bubbles) ? raw.bubbles : [];
-  const general = createGeneralProfile(legacyBubbles);
-  const migratedProfiles = Array.isArray(raw.appProfiles)
-    ? raw.appProfiles.map(appProfileToRingProfile).map(migrateFigmaProfile)
+  const legacyProfileBubbles = Array.isArray(legacyBubbles) ? legacyBubbles : [];
+  const general = createGeneralProfile(legacyProfileBubbles);
+  const migratedProfiles = Array.isArray(legacyAppProfiles)
+    ? legacyAppProfiles.map(appProfileToRingProfile).map(migrateFigmaProfile).map(migrateAutoCadProfile)
     : [];
-  return syncCompatibilityViews({
+  return {
     ...createDefaultConfig(),
-    ...raw,
+    ...configInput,
     schemaVersion: CONFIG_SCHEMA_VERSION,
     generalProfileId: GENERAL_PROFILE_ID,
     selectedGlobalProfileId: null,
     profiles: [general, ...migratedProfiles],
+    hardwareAcceleration: typeof raw.hardwareAcceleration === 'boolean' ? raw.hardwareAcceleration : true,
     ringSize: raw.ringSize ?? DEFAULT_RING_SIZE,
     labelSize: raw.labelSize ?? DEFAULT_LABEL_SIZE,
     theme: { ...DEFAULT_THEME, ...raw.theme },
-  } as AppConfig);
+  } as AppConfig;
 }

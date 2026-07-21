@@ -93,13 +93,13 @@
 .field textarea,
 .selectWrap select {
   width: 100%;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   background: var(--bg-surface-raised);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--fs-base);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 .field input,
 .field select { height: var(--control-md); padding: 0 var(--space-3); }
@@ -107,25 +107,9 @@
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible,
-.selectWrap select:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+.selectWrap select:focus-visible { border-color: var(--input-border-focus); box-shadow: none; }
 .field input::placeholder,
 .field textarea::placeholder { color: var(--text-tertiary); }
-
-.macroCapture { display: flex; flex-direction: column; gap: var(--space-2); }
-.macroCapture input { cursor: text; }
-.macroCapture button {
-  align-self: flex-start;
-  min-height: var(--control-sm);
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-}
-.macroCapture button:hover { border-color: var(--border-accent); color: var(--accent); }
 
 .inputRow { display: flex; gap: var(--space-2); }
 .inputRow input { min-width: 0; flex: 1; }
@@ -192,7 +176,7 @@
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .appSelectButton:hover { border-color: var(--border-accent); }
-.appSelectButton[aria-expanded="true"] { border-color: var(--border-accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+.appSelectButton[aria-expanded="true"] { border-color: var(--input-border-focus); box-shadow: none; }
 .appSelectIcon { width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center; color: var(--accent); }
 .appSelectIcon img { width: 16px; height: 16px; object-fit: contain; }
 .appSelectName { min-width: 0; flex: 1; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }

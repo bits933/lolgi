@@ -149,3 +149,74 @@ export function validateShortcut(shortcut: string | undefined | null): string | 
   }
   return null;
 }
+
+/** The subset of a keydown event needed to derive a shortcut string — structurally
+ *  compatible with both DOM KeyboardEvent and React's synthetic KeyboardEvent, so
+ *  callers never need to import a DOM lib type into this dependency-free module. */
+export interface KeyPressLike {
+  key: string;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  metaKey: boolean;
+}
+
+/**
+ * Converts a physical keydown event into a canonical shortcut string such as
+ * "Ctrl+Shift+S". Shared by every key-capture control (ActionToolbar's shortcut
+ * fields, MacroStepEditor's key chips, HotkeyConfig's global-hotkey recorder) so
+ * a captured press always round-trips through the exact vocabulary parseShortcut
+ * reads back. Returns null for a bare modifier press (Control/Alt/Shift/Meta
+ * alone) or Tab, so the caller can keep listening for a fuller combo.
+ */
+export function shortcutFromKeyEvent(event: KeyPressLike): string | null {
+  if (['Control', 'Alt', 'Shift', 'Meta', 'Tab'].includes(event.key)) return null;
+  const parts: string[] = [];
+  if (event.ctrlKey) parts.push('Ctrl');
+  if (event.altKey) parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.metaKey) parts.push('Meta');
+  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  parts.push(key);
+  return parts.join('+');
+}
+
+/**
+ * True when a `keys:` token should be sent as a single key press rather than
+ * typed character by character: a valid chord that either carries a modifier
+ * (Ctrl+A, Shift+Enter) or names a multi-character key (Enter, Tab, Esc, F1,
+ * arrows). A bare single character returns false so it is typed — pressing its
+ * key and typing it produce the identical SendInput.
+ */
+function isPressableKeyToken(token: string): boolean {
+  const parsed = parseShortcut(token);
+  const isSingleValidKey =
+    parsed.key !== null &&
+    parsed.unknownTokens.length === 0 &&
+    parsed.extraKeys.length === 0 &&
+    !parsed.duplicateModifiers;
+  if (!isSingleValidKey) return false;
+  return parsed.modifiers.length > 0 || token.length > 1;
+}
+
+/**
+ * Plan a `keys:` directive into an ordered list of shortcut strings, one per
+ * SendInput dispatch. Whitespace separates tokens. A token that names a real key
+ * or chord (Enter, Tab, F1, Ctrl+A, Shift+Enter) is kept whole so it is pressed
+ * as a key; every other token is a run of literal characters — a command alias
+ * such as "PL" — and is exploded into one keystroke per character so it is typed,
+ * not interpreted. This lets a single `keys:` step mix typed command text with
+ * real Enter/modifier presses (e.g. "PL Enter" or "LAYISO Enter").
+ */
+export function planKeystrokes(sequence: string): string[] {
+  const plan: string[] = [];
+  for (const token of sequence.split(/\s+/)) {
+    if (!token) continue;
+    if (isPressableKeyToken(token)) {
+      plan.push(token);
+    } else {
+      for (const character of token) plan.push(character);
+    }
+  }
+  return plan;
+}

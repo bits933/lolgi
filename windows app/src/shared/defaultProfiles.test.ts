@@ -30,7 +30,7 @@ function allProfileIds(profile: ReturnType<typeof createAppProfileFromPreset>): 
 }
 
 describe('curated app profiles', () => {
-  it('offers the six planned Windows application presets', () => {
+  it('offers the seven planned Windows application presets', () => {
     expect(APP_PROFILE_PRESETS.map((preset) => [preset.id, `${preset.processName}.exe`])).toEqual([
       ['photoshop', 'Photoshop.exe'],
       ['blender', 'blender.exe'],
@@ -38,6 +38,7 @@ describe('curated app profiles', () => {
       ['premiere', 'Adobe Premiere Pro.exe'],
       ['after-effects', 'AfterFX.exe'],
       ['figma', 'Figma.exe'],
+      ['autocad', 'acad.exe'],
     ]);
   });
 
@@ -51,6 +52,7 @@ describe('curated app profiles', () => {
       premiere: 8,
       'after-effects': 8,
       figma: 9,
+      autocad: 8,
     };
     for (const preset of APP_PROFILE_PRESETS) {
       const profile = createAppProfileFromPreset(preset.id, 4);
@@ -87,6 +89,10 @@ describe('curated app profiles', () => {
       premiere: { standalone: 18, fill: 16, menu: 4, macro: 0 },
       'after-effects': { standalone: 27, fill: 14, menu: 6, macro: 0 },
       figma: { standalone: 15, fill: 16, menu: 4, macro: 7 },
+      // Every non-fill, non-menu AutoCAD action is a macro so they all edit
+      // through the multi-step editor (18 typed command aliases + Repeat last,
+      // Cancel, Save, Save As, Plot as single-step shortcut/sequence macros).
+      autocad: { standalone: 0, fill: 1, menu: 4, macro: 23 },
     };
     for (const preset of APP_PROFILE_PRESETS) {
       const actions = APP_ACTION_CATALOG.filter((action) => action.appId === preset.id);
@@ -132,6 +138,7 @@ describe('curated app profiles', () => {
   it('normalizes executable names and marks custom bindings for setup', () => {
     expect(getSupportedAppId('Photoshop.exe')).toBe('photoshop');
     expect(getSupportedAppId('afterfx')).toBe('after-effects');
+    expect(getSupportedAppId('acad.exe')).toBe('autocad');
     expect(getSupportedAppId('unknown.exe')).toBeNull();
 
     for (const id of [
@@ -148,6 +155,36 @@ describe('curated app profiles', () => {
       APP_ACTION_CATALOG.find((action) => action.id === 'figma-quick-actions')
         ?.setupInstructions
     ).toMatch(/keyboard layout|Actions menu/i);
+  });
+
+  it('uses the researched AutoCAD eight-bubble ring', () => {
+    const profile = createAppProfileFromPreset('autocad', 1);
+    expect(profile.slots.map((slot) => slot.assignment?.definitionId)).toEqual([
+      'autocad-repeat-last',
+      'autocad-cancel',
+      'autocad-zoom-extents',
+      'autocad-history',
+      'autocad-draw-menu',
+      'autocad-modify-menu',
+      'autocad-layers-menu',
+      'autocad-file-menu',
+    ]);
+    const macros = APP_ACTION_CATALOG.filter(
+      (action) => action.appId === 'autocad' && action.actionType === 'macro'
+    );
+    expect(macros).toHaveLength(23);
+    // The typed command aliases (keys: payloads) type letters then press Enter.
+    // The other macros are single shortcut/sequence commands kept as macros so
+    // they also edit through the step editor.
+    const typedAliasMacros = macros.filter((action) => (action.defaultPayload ?? '').startsWith('keys:'));
+    expect(typedAliasMacros).toHaveLength(18);
+    expect(typedAliasMacros.every((action) => /^keys:[^;]+; Enter(?:; keys:[^;]+; Enter)?$/.test(action.defaultPayload ?? '')))
+      .toBe(true);
+    expect(APP_ACTION_CATALOG.find((action) => action.id === 'autocad-zoom-extents')?.defaultPayload)
+      .toBe('keys:Z; Enter; keys:E; Enter');
+    const history = APP_ACTION_CATALOG.find((action) => action.id === 'autocad-history');
+    expect([history?.defaultPayload, history?.scrollUpAction, history?.scrollDownAction])
+      .toEqual(['Ctrl+Z', 'Ctrl+Y', 'Ctrl+Z']);
   });
 
   it('uses one Actions-menu shortcut and batched text queries for every Figma macro', () => {

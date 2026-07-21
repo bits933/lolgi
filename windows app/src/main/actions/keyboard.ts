@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import { randomUUID } from 'crypto';
 import { gzipSync } from 'zlib';
 import type { ForegroundWindowTarget, InputDispatchReceipt } from '../../shared/types';
-import { parseShortcut } from '../../shared/shortcutParser';
+import { parseShortcut, planKeystrokes } from '../../shared/shortcutParser';
 import { registerOwnedProcessId, unregisterOwnedProcessId } from '../utils/foregroundApp';
 
 const BROKER_PROTOCOL_VERSION = 1;
@@ -957,12 +957,27 @@ export async function executeKeyboardTextAsync(
   );
 }
 
-/** Fire-and-forget compatibility wrapper used by older callers. */
-export function executeKeyboardShortcut(
-  shortcut: string,
+/**
+ * Sends a `keys:` directive as real virtual-key keystrokes by reusing the
+ * targeted chord path. Unlike executeKeyboardTextAsync (KEYEVENTF_UNICODE),
+ * every event is a genuine scan-code key press — native command lines such as
+ * AutoCAD's accept these but silently drop synthetic Unicode text. The directive
+ * is planned by planKeystrokes: whitespace-separated named keys and chords
+ * (Enter, Tab, Ctrl+A, Shift+Enter) are pressed as keys, while runs of literal
+ * characters (command aliases like "PL") are typed one keystroke per character.
+ * Every dispatched token must resolve to the shared VK vocabulary.
+ */
+export async function executeKeyboardTypeAsync(
+  sequence: string,
   target: ForegroundWindowTarget
-): void {
-  void executeKeyboardShortcutAsync(shortcut, target).catch(() => {});
+): Promise<InputDispatchReceipt[]> {
+  const keystrokes = planKeystrokes(sequence);
+  if (keystrokes.length === 0) throw new Error('Keystroke text cannot be empty.');
+  const receipts: InputDispatchReceipt[] = [];
+  for (const keystroke of keystrokes) {
+    receipts.push(await executeKeyboardShortcutAsync(keystroke, target));
+  }
+  return receipts;
 }
 
 export async function executeKeyboardSequence(

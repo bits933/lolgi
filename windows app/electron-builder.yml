@@ -50,3 +50,12 @@ nsis:
   allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
+
+# Native MSI is available through `npm run dist:msi`. Keep this upgrade code
+# stable forever so newer MSI releases replace older ones cleanly.
+msi:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  upgradeCode: "{D1E21B0F-0E70-4B65-A0B4-3A51FBAB6B6A}"

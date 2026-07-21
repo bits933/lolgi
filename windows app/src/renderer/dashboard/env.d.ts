@@ -1,4 +1,4 @@
-import type { AppConfig, AppProfile, BubbleConfig, ForegroundAppInfo, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
+import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
 import type { RuntimeBuildIdentity } from '../../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../../shared/diagnostics';
 
@@ -31,6 +31,9 @@ export interface DashboardElectronAPI {
   setLaunchAtStartup: (value: boolean) => Promise<{ success: boolean }>;
   setRingEnabled: (value: boolean) => Promise<{ success: boolean }>;
   setTriggerMode: (value: 'A' | 'B') => Promise<{ success: boolean }>;
+  setHardwareAcceleration: (value: boolean) => Promise<GraphicsAccelerationStatus>;
+  getGraphicsAccelerationStatus: () => Promise<GraphicsAccelerationStatus>;
+  relaunchApp: () => Promise<void>;
   saveProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   addProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   removeProfile: (id: string) => Promise<MutationResult>;
@@ -38,23 +41,8 @@ export interface DashboardElectronAPI {
   setDashboardDirty: (value: boolean) => void;
   approveDashboardClose: () => void;
   onDashboardCloseRequested: (callback: () => void) => () => void;
-  setBubbles: (bubbles: BubbleConfig[]) => Promise<{ success: boolean }>;
-  updateBubble: (id: string, patch: Partial<BubbleConfig>) => Promise<{ success: boolean }>;
-  addBubble: (bubble: BubbleConfig) => Promise<{ success: boolean }>;
-  removeBubble: (id: string) => Promise<{ success: boolean }>;
-  reorderBubbles: (orderedIds: string[]) => Promise<{ success: boolean }>;
   pickFile: () => Promise<string | null>;
   pickFolder: () => Promise<string | null>;
-
-  // --- Per-App Profiles ---
-  getAppProfiles: () => Promise<AppProfile[]>;
-  addAppProfile: (profile: AppProfile) => Promise<{ success: boolean }>;
-  updateAppProfile: (id: string, patch: Partial<AppProfile>) => Promise<{ success: boolean }>;
-  removeAppProfile: (id: string) => Promise<{ success: boolean }>;
-  setProfileBubbles: (profileId: string, bubbles: BubbleConfig[]) => Promise<{ success: boolean }>;
-  updateProfileBubble: (profileId: string, bubbleId: string, patch: Partial<BubbleConfig>) => Promise<{ success: boolean }>;
-  addProfileBubble: (profileId: string, bubble: BubbleConfig) => Promise<{ success: boolean }>;
-  removeProfileBubble: (profileId: string, bubbleId: string) => Promise<{ success: boolean }>;
 
   // --- App Detection ---
   detectForegroundApp: () => Promise<ForegroundAppInfo | null>;

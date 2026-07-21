@@ -1,24 +1,17 @@
 import { create } from 'zustand';
-import type { AppConfig, DashboardStore, AppProfile, BubbleConfig, LabelSize, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../../shared/types';
-import { ringProfileToAppProfile, slotsToBubbles } from '../../../shared/profileUtils';
+import type { AppConfig, DashboardStore, LabelSize, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../../shared/types';
 
 function withUpdatedProfiles(config: AppConfig, profiles: RingProfile[]): AppConfig {
-  const generalProfile = profiles.find((profile) => profile.id === config.generalProfileId);
-  return {
-    ...config,
-    profiles,
-    bubbles: generalProfile ? slotsToBubbles(generalProfile.slots) : [],
-    appProfiles: profiles.flatMap((profile) => {
-      const legacyProfile = ringProfileToAppProfile(profile);
-      return legacyProfile ? [legacyProfile] : [];
-    }),
-  };
+  return { ...config, profiles };
 }
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
   config: null,
   isLoading: false,
   isDirty: false,
+  graphicsStatus: null,
+  isGraphicsStatusLoading: false,
+  isRelaunching: false,
 
   loadConfig: async () => {
     set({ isLoading: true });
@@ -110,6 +103,42 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     }
   },
 
+  loadGraphicsAccelerationStatus: async () => {
+    if (get().isGraphicsStatusLoading) return;
+    set({ isGraphicsStatusLoading: true });
+    try {
+      const graphicsStatus = await window.electronAPI.getGraphicsAccelerationStatus();
+      set({ graphicsStatus, isGraphicsStatusLoading: false });
+    } catch (err) {
+      console.error('[dashboardStore] loadGraphicsAccelerationStatus failed:', err);
+      set({ isGraphicsStatusLoading: false });
+    }
+  },
+
+  setHardwareAcceleration: async (value: boolean) => {
+    if (get().config?.hardwareAcceleration === value) return;
+    try {
+      const graphicsStatus = await window.electronAPI.setHardwareAcceleration(value);
+      set((state) => ({
+        config: state.config ? { ...state.config, hardwareAcceleration: value } : state.config,
+        graphicsStatus,
+      }));
+    } catch (err) {
+      console.error('[dashboardStore] setHardwareAcceleration failed:', err);
+    }
+  },
+
+  relaunchApp: async () => {
+    if (get().isRelaunching) return;
+    set({ isRelaunching: true });
+    try {
+      await window.electronAPI.relaunchApp();
+    } catch (err) {
+      console.error('[dashboardStore] relaunchApp failed:', err);
+      set({ isRelaunching: false });
+    }
+  },
+
   saveProfile: async (profile: RingProfile): Promise<MutationResult<RingProfile>> => {
     const result = await window.electronAPI.saveProfile(profile);
     if (result.status === 'ok') {
@@ -135,7 +164,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         config: state.config
           ? withUpdatedProfiles(state.config, [...state.config.profiles, savedProfile])
           : state.config,
-        activeProfileId: savedProfile.id,
         isDirty: false,
       }));
     }
@@ -154,7 +182,6 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
                 selectedGlobalProfileId: config.selectedGlobalProfileId === id ? null : config.selectedGlobalProfileId,
               }
             : config,
-          activeProfileId: state.activeProfileId === id ? config?.generalProfileId ?? null : state.activeProfileId,
           isDirty: false,
         };
       });
@@ -173,149 +200,4 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     return result;
   },
 
-  setBubbles: async (bubbles: BubbleConfig[]) => {
-    const result = await window.electronAPI.setBubbles(bubbles);
-    if (result.success) {
-      set((s) => ({
-        config: s.config ? { ...s.config, bubbles } : s.config,
-        isDirty: false,
-      }));
-    }
-  },
-
-  updateBubble: async (id: string, patch: Partial<BubbleConfig>) => {
-    const result = await window.electronAPI.updateBubble(id, patch);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const bubbles = current.bubbles.map((b) =>
-        b.id === id ? { ...b, ...patch } : b
-      );
-      set({ config: { ...current, bubbles }, isDirty: false });
-    }
-  },
-
-  addBubble: async (bubble: BubbleConfig) => {
-    const result = await window.electronAPI.addBubble(bubble);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      set({ config: { ...current, bubbles: [...current.bubbles, bubble] } });
-    }
-  },
-
-  removeBubble: async (id: string) => {
-    const result = await window.electronAPI.removeBubble(id);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const bubbles = current.bubbles.filter((b) => b.id !== id);
-      set({ config: { ...current, bubbles } });
-    }
-  },
-
-  reorderBubbles: async (orderedIds: string[]) => {
-    const result = await window.electronAPI.reorderBubbles(orderedIds);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const map = new Map(current.bubbles.map((b) => [b.id, b]));
-      const bubbles = orderedIds.flatMap((id) => {
-        const b = map.get(id);
-        return b ? [b] : [];
-      });
-      set({ config: { ...current, bubbles } });
-    }
-  },
-
-  // ---------------------------------------------------------------------------
-  // Per-App Profile Management
-  // ---------------------------------------------------------------------------
-
-  activeProfileId: null,
-
-  setActiveProfileId: (id: string | null) => {
-    set({ activeProfileId: id });
-  },
-
-  addAppProfile: async (profile: AppProfile) => {
-    const result = await window.electronAPI.addAppProfile(profile);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      set({ config: { ...current, appProfiles: [...(current.appProfiles ?? []), profile] } });
-    }
-  },
-
-  updateAppProfile: async (id: string, patch: Partial<AppProfile>) => {
-    const result = await window.electronAPI.updateAppProfile(id, patch);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).map((p) =>
-        p.id === id ? { ...p, ...patch } : p
-      );
-      set({ config: { ...current, appProfiles } });
-    }
-  },
-
-  removeAppProfile: async (id: string) => {
-    const result = await window.electronAPI.removeAppProfile(id);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).filter((p) => p.id !== id);
-      set({ config: { ...current, appProfiles }, activeProfileId: get().activeProfileId === id ? null : get().activeProfileId });
-    }
-  },
-
-  setProfileBubbles: async (profileId: string, bubbles: BubbleConfig[]) => {
-    const result = await window.electronAPI.setProfileBubbles(profileId, bubbles);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).map((p) =>
-        p.id === profileId ? { ...p, bubbles } : p
-      );
-      set({ config: { ...current, appProfiles } });
-    }
-  },
-
-  updateProfileBubble: async (profileId: string, bubbleId: string, patch: Partial<BubbleConfig>) => {
-    const result = await window.electronAPI.updateProfileBubble(profileId, bubbleId, patch);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).map((p) => {
-        if (p.id !== profileId) return p;
-        const bubbles = p.bubbles.map((b) => (b.id === bubbleId ? { ...b, ...patch } : b));
-        return { ...p, bubbles };
-      });
-      set({ config: { ...current, appProfiles } });
-    }
-  },
-
-  addProfileBubble: async (profileId: string, bubble: BubbleConfig) => {
-    const result = await window.electronAPI.addProfileBubble(profileId, bubble);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).map((p) =>
-        p.id === profileId ? { ...p, bubbles: [...p.bubbles, bubble] } : p
-      );
-      set({ config: { ...current, appProfiles } });
-    }
-  },
-
-  removeProfileBubble: async (profileId: string, bubbleId: string) => {
-    const result = await window.electronAPI.removeProfileBubble(profileId, bubbleId);
-    if (result.success) {
-      const current = get().config;
-      if (!current) return;
-      const appProfiles = (current.appProfiles ?? []).map((p) =>
-        p.id === profileId ? { ...p, bubbles: p.bubbles.filter((b) => b.id !== bubbleId) } : p
-      );
-      set({ config: { ...current, appProfiles } });
-    }
-  },
 }));

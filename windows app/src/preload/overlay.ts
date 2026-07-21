@@ -8,7 +8,6 @@ import {
   OVERLAY_CLOSE,
   OVERLAY_ANIMATION_COMPLETE,
   SYSTEM_GET_STATE,
-  CONFIG_GET_BUBBLES,
 } from '../shared/ipcChannels';
 import type {
   RingOpenPayload,
@@ -108,7 +107,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemState: (): Promise<SystemState> =>
     ipcRenderer.invoke(SYSTEM_GET_STATE),
 
-  /** Request current bubble configs */
-  getBubbles: (): Promise<BubbleConfig[]> =>
-    ipcRenderer.invoke(CONFIG_GET_BUBBLES),
 });

@@ -6,6 +6,7 @@ import { createDefaultConfig, migrateConfig } from './configMigration';
 const LEGACY_TIDY = 'Ctrl+/; delay:200; t; i; d; y; Space; u; p; Enter';
 const LEGACY_COPY_SVG = 'Ctrl+/; delay:200; c; o; p; y; Space; a; s; Space; s; v; g; Enter';
 const LEGACY_VERSION_HISTORY = 'Ctrl+/; delay:200; s; h; o; w; Space; v; e; r; s; i; o; n; Space; h; i; s; t; o; r; y; Enter';
+const LEGACY_AUTOCAD_POLYLINE = 'P; L; Enter';
 
 function mapAssignment(
   assignment: ActionAssignment,
@@ -47,6 +48,37 @@ function configWithAllPresets(): { config: AppConfig; presetIds: string[] } {
 }
 
 describe('config migration round-trip (M-07)', () => {
+  it('defaults hardware acceleration and preserves an explicit disabled preference', () => {
+    const defaults = createDefaultConfig();
+    const { hardwareAcceleration: _hardwareAcceleration, ...legacyConfig } = defaults;
+
+    expect(defaults.hardwareAcceleration).toBe(true);
+    expect(migrateConfig(legacyConfig).hardwareAcceleration).toBe(true);
+    expect(migrateConfig({ ...defaults, hardwareAcceleration: false }).hardwareAcceleration).toBe(false);
+    expect(
+      migrateConfig(migrateConfig({ ...defaults, hardwareAcceleration: false }))
+        .hardwareAcceleration
+    ).toBe(false);
+  });
+
+  it('imports legacy bubbles without retaining legacy compatibility views', () => {
+    const migrated = migrateConfig({
+      bubbles: [{
+        id: 'legacy-action',
+        label: 'Legacy action',
+        iconName: 'Circle',
+        angleIndex: 0,
+        type: 'default',
+        actionType: 'do-nothing',
+      }],
+      appProfiles: [],
+    });
+
+    expect(migrated.profiles[0].slots[0].assignment?.id).toBe('legacy-action');
+    expect(migrated).not.toHaveProperty('bubbles');
+    expect(migrated).not.toHaveProperty('appProfiles');
+  });
+
   it('preserves every preset profile through JSON serialize + migrate', () => {
     const { config } = configWithAllPresets();
     const original = config.profiles.filter((profile) => profile.kind === 'application');
@@ -106,6 +138,81 @@ describe('config migration round-trip (M-07)', () => {
       .assignment!.children!.find((child) => child.definitionId === 'figma-copy-svg')!;
     expect(tidy.payload).toBe('Ctrl+K; delay:250; text:Tidy up; Enter');
     expect(properties.payload).toBe(`${LEGACY_COPY_SVG} ; custom`);
+  });
+
+  it('updates exact legacy AutoCAD command sequences without overwriting custom commands', () => {
+    const base = createDefaultConfig();
+    const autocad = createAppProfileFromPreset('autocad', 1);
+    const legacy = mapProfileAssignment(autocad, 'autocad-polyline', (assignment) => ({
+      ...assignment,
+      actionType: 'keyboard-sequence',
+      payload: LEGACY_AUTOCAD_POLYLINE,
+    }));
+    const customized = mapProfileAssignment(legacy, 'autocad-rectangle', (assignment) => ({
+      ...assignment,
+      actionType: 'keyboard-sequence',
+      payload: 'R; X; Enter',
+    }));
+    const migrated = migrateConfig({ ...base, profiles: [...base.profiles, customized] });
+    const draw = migrated.profiles.find((profile) => profile.id === autocad.id)!
+      .slots.find((slot) => slot.assignment?.definitionId === 'autocad-draw-menu')!.assignment!;
+    const polyline = draw.children!.find((child) => child.definitionId === 'autocad-polyline')!;
+    const rectangle = draw.children!.find((child) => child.definitionId === 'autocad-rectangle')!;
+
+    expect(polyline.actionType).toBe('macro');
+    expect(polyline.payload).toBe('keys:PL; Enter');
+    expect(rectangle.actionType).toBe('keyboard-sequence');
+    expect(rectangle.payload).toBe('R; X; Enter');
+  });
+
+  it('heals superseded text: AutoCAD macros into keys: keystroke macros', () => {
+    const base = createDefaultConfig();
+    const autocad = createAppProfileFromPreset('autocad', 1);
+    const legacy = mapProfileAssignment(autocad, 'autocad-polyline', (assignment) => ({
+      ...assignment,
+      actionType: 'macro',
+      payload: 'text:PL; Enter',
+    }));
+    const customized = mapProfileAssignment(legacy, 'autocad-rectangle', (assignment) => ({
+      ...assignment,
+      actionType: 'macro',
+      payload: 'text:CUSTOM; Enter',
+    }));
+    const migrated = migrateConfig({ ...base, profiles: [...base.profiles, customized] });
+    const draw = migrated.profiles.find((profile) => profile.id === autocad.id)!
+      .slots.find((slot) => slot.assignment?.definitionId === 'autocad-draw-menu')!.assignment!;
+    const polyline = draw.children!.find((child) => child.definitionId === 'autocad-polyline')!;
+    const rectangle = draw.children!.find((child) => child.definitionId === 'autocad-rectangle')!;
+
+    expect(polyline.actionType).toBe('macro');
+    expect(polyline.payload).toBe('keys:PL; Enter');
+    expect(rectangle.payload).toBe('text:CUSTOM; Enter');
+  });
+
+  it('upgrades default single-shortcut AutoCAD actions to macros, leaving custom shortcuts alone', () => {
+    const base = createDefaultConfig();
+    const autocad = createAppProfileFromPreset('autocad', 1);
+    // A profile saved before Save/Plot became macros.
+    const legacy = mapProfileAssignment(autocad, 'autocad-save', (assignment) => ({
+      ...assignment,
+      actionType: 'keyboard-shortcut',
+      payload: 'Ctrl+S',
+    }));
+    const customized = mapProfileAssignment(legacy, 'autocad-plot', (assignment) => ({
+      ...assignment,
+      actionType: 'keyboard-shortcut',
+      payload: 'Ctrl+Alt+P', // user-customized — must not be rewritten
+    }));
+    const migrated = migrateConfig({ ...base, profiles: [...base.profiles, customized] });
+    const fileMenu = migrated.profiles.find((profile) => profile.id === autocad.id)!
+      .slots.find((slot) => slot.assignment?.definitionId === 'autocad-file-menu')!.assignment!;
+    const save = fileMenu.children!.find((child) => child.definitionId === 'autocad-save')!;
+    const plot = fileMenu.children!.find((child) => child.definitionId === 'autocad-plot')!;
+
+    expect(save.actionType).toBe('macro');
+    expect(save.payload).toBe('Ctrl+S');
+    expect(plot.actionType).toBe('keyboard-shortcut');
+    expect(plot.payload).toBe('Ctrl+Alt+P');
   });
 
   it('migrates nested children while preserving IDs, positions, and custom fields', () => {

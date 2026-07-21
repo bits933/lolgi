@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { MAX_FOLDER_CHILDREN } from './constants';
 import type {
   ActionAssignment,
@@ -20,7 +19,7 @@ export function normalizeGroupLabel(label: string): string {
 
 export function createEmptySlots(count = DEFAULT_SLOT_COUNT): RingSlot[] {
   return Array.from({ length: count }, (_, position) => ({
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     position,
     assignment: null,
   }));
@@ -81,7 +80,7 @@ export function bubblesToSlots(bubbles: BubbleConfig[], minimumCount = 0): RingS
   return Array.from({ length: count }, (_, position) => {
     const bubble = bubbles[position];
     return {
-      id: bubble ? `slot-${bubble.id}` : uuidv4(),
+      id: bubble ? `slot-${bubble.id}` : crypto.randomUUID(),
       position,
       assignment: bubble ? bubbleToAssignment(bubble) : null,
     };

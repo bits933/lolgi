@@ -38,7 +38,7 @@
   align-items: center;
   gap: var(--space-1);
   background: var(--bg-surface-raised);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   font-size: var(--fs-base);
   color: var(--text-primary);
@@ -47,9 +47,9 @@
 }
 
 .inputRecording {
-  border-color: var(--border-accent);
+  border-color: var(--input-border-focus);
   background: var(--accent-active-fill);
-  box-shadow: 0 0 0 2px var(--accent-muted);
+  box-shadow: none;
 }
 
 .recordingLabel {

@@ -50,6 +50,8 @@
   --border-hover: #4a505d;
   --border-accent: color-mix(in srgb, var(--accent) 10%, transparent);
   --border-accent-strong: rgba(123, 104, 238, 0.6);
+  --input-border: color-mix(in srgb, var(--accent) 5%, transparent);
+  --input-border-focus: color-mix(in srgb, var(--accent) 10%, transparent);
 
   /* Semantic — danger / warning / success (theme-aware) */
   --danger: #f97066;
@@ -175,6 +177,13 @@ html, body, #root {
 
 /* Text fields signal focus through their own border treatment (and the caret)
    — the outline ring on top reads as a stray double box. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* Custom scrollbar — thin, unobtrusive */
 * {
   scrollbar-width: thin;

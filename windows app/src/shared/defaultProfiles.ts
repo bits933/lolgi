@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type {
   ActionDefinition,
   ActionEditorField,
@@ -42,6 +41,7 @@ const APP_LABELS: Record<SupportedAppId, string> = {
   premiere: 'Premiere Pro',
   'after-effects': 'After Effects',
   figma: 'Figma',
+  autocad: 'AutoCAD',
 };
 
 export const SUPPORTED_APP_LABELS = APP_LABELS;
@@ -62,12 +62,13 @@ export const FIGMA_MACRO_QUERIES = {
   'distribute-v': 'Distribute vertical spacing',
 } as const;
 
-const SETUP: Record<Exclude<SupportedAppId, 'figma'>, string> = {
+const SETUP: Partial<Record<SupportedAppId, string>> = {
   photoshop: 'Open Edit > Keyboard Shortcuts (Ctrl+Alt+Shift+K), or record a Photoshop Action and assign Shift+F2-F12. Then confirm the shortcut shown for this bubble.',
   blender: 'Open Edit > Preferences > Keymap and bind this command to the suggested Ctrl+Alt+Shift shortcut. Blender keymaps can be exported after setup.',
   resolve: 'Open Keyboard Customization (Ctrl+Alt+K), bind the named command to the suggested shortcut, then export the preset for reuse.',
   premiere: 'Open Keyboard Shortcuts (Ctrl+Alt+K), search for the named command, and assign the suggested Ctrl+Alt+Shift shortcut.',
   'after-effects': "Open Edit > Keyboard Shortcuts (Ctrl+Alt+'), search for the named command, and assign the suggested shortcut.",
+  autocad: 'AutoCAD commands are typed on the command line, so no shortcut setup is needed. To customize, edit aliases via Manage > Customization > Edit Aliases (acad.pgp), or add LISP commands through APPLOAD (AP) > Startup Suite (LISP requires full AutoCAD, or AutoCAD LT 2024+).',
 };
 
 function action(
@@ -447,6 +448,37 @@ const figma: AppActionSpec[] = [
   figmaMacro('version-history', 'Version history', 'History', 'Open version history through the Figma Actions menu.'),
 ];
 
+const autocad: AppActionSpec[] = [
+  action('autocad', 'repeat-last', 'Repeat last', 'Repeat2', 'Enter', 'Repeat the previous command at the AutoCAD prompt.', { actionType: 'macro' }),
+  action('autocad', 'cancel', 'Cancel', 'X', 'Esc; Esc', 'Cancel the current command and return to the neutral prompt.', { actionType: 'macro' }),
+  action('autocad', 'zoom-extents', 'Zoom extents', 'ZoomIn', 'keys:Z; Enter; keys:E; Enter', 'Fit all drawing geometry in the active viewport.', { actionType: 'macro' }),
+  fill('autocad', 'history', 'Undo / Redo', 'History', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Z', 'Click Undo; scroll forward and backward through drawing history.'),
+  action('autocad', 'line', 'Line', 'Minus', 'keys:L; Enter', 'Start the Line command.', { actionType: 'macro' }),
+  action('autocad', 'polyline', 'Polyline', 'Spline', 'keys:PL; Enter', 'Start the Polyline command.', { actionType: 'macro' }),
+  action('autocad', 'rectangle', 'Rectangle', 'Square', 'keys:REC; Enter', 'Start the Rectangle command.', { actionType: 'macro' }),
+  action('autocad', 'circle', 'Circle', 'Circle', 'keys:C; Enter', 'Start the Circle command.', { actionType: 'macro' }),
+  action('autocad', 'arc', 'Arc', 'ChartSpline', 'keys:A; Enter', 'Start the Arc command.', { actionType: 'macro' }),
+  menu('autocad', 'draw-menu', 'Draw', 'PencilRuler', ['autocad-line', 'autocad-polyline', 'autocad-rectangle', 'autocad-circle', 'autocad-arc'], '2D drawing commands.'),
+  action('autocad', 'trim', 'Trim', 'Scissors', 'keys:TR; Enter', 'Trim drawing geometry.', { actionType: 'macro' }),
+  action('autocad', 'extend', 'Extend', 'MoveRight', 'keys:EX; Enter', 'Extend drawing geometry.', { actionType: 'macro' }),
+  action('autocad', 'fillet', 'Fillet', 'CornerDownRight', 'keys:F; Enter', 'Round the corner between drawing objects.', { actionType: 'macro' }),
+  action('autocad', 'chamfer', 'Chamfer', 'Triangle', 'keys:CHA; Enter', 'Bevel the corner between drawing objects.', { actionType: 'macro' }),
+  action('autocad', 'offset', 'Offset', 'BetweenHorizontalEnd', 'keys:O; Enter', 'Create an offset copy of drawing geometry.', { actionType: 'macro' }),
+  menu('autocad', 'modify-menu', 'Modify', 'Wrench', ['autocad-trim', 'autocad-extend', 'autocad-fillet', 'autocad-chamfer', 'autocad-offset'], 'Core 2D modify commands.'),
+  action('autocad', 'layer-palette', 'Layer palette', 'Layers3', 'keys:LA; Enter', 'Open the Layer Properties Manager.', { actionType: 'macro' }),
+  action('autocad', 'isolate-layer', 'Isolate layer', 'EyeOff', 'keys:LAYISO; Enter', 'Isolate the layer of the selected object.', { actionType: 'macro' }),
+  action('autocad', 'unisolate-layer', 'Unisolate layers', 'Eye', 'keys:LAYUNISO; Enter', 'Restore layers hidden by layer isolation.', { actionType: 'macro' }),
+  action('autocad', 'all-layers-on', 'All layers on', 'Layers3', 'keys:LAYON; Enter', 'Turn all drawing layers on.', { actionType: 'macro' }),
+  action('autocad', 'match-properties', 'Match properties', 'Paintbrush', 'keys:MA; Enter', 'Match object properties from one object to another.', { actionType: 'macro' }),
+  menu('autocad', 'layers-menu', 'Layers', 'Layers3', ['autocad-layer-palette', 'autocad-isolate-layer', 'autocad-unisolate-layer', 'autocad-all-layers-on', 'autocad-match-properties'], 'Layer management and property matching.'),
+  action('autocad', 'save', 'Save', 'Save', 'Ctrl+S', 'Save the active drawing.', { actionType: 'macro' }),
+  action('autocad', 'save-as', 'Save As', 'FilePenLine', 'Ctrl+Shift+S', 'Save the drawing under a new name.', { actionType: 'macro' }),
+  action('autocad', 'plot', 'Plot', 'Printer', 'Ctrl+P', 'Open the Plot dialog.', { actionType: 'macro' }),
+  action('autocad', 'purge', 'Purge', 'Trash2', 'keys:PU; Enter', 'Open Purge to remove unused drawing definitions.', { actionType: 'macro' }),
+  action('autocad', 'options', 'Options', 'Settings', 'keys:OP; Enter', 'Open AutoCAD Options.', { actionType: 'macro' }),
+  menu('autocad', 'file-menu', 'File', 'FileOutput', ['autocad-save', 'autocad-save-as', 'autocad-plot', 'autocad-purge', 'autocad-options'], 'Save, plot, and drawing maintenance.'),
+];
+
 const ALL_SPECS: AppActionSpec[] = [
   ...photoshop,
   ...blender,
@@ -454,6 +486,7 @@ const ALL_SPECS: AppActionSpec[] = [
   ...premiere,
   ...afterEffects,
   ...figma,
+  ...autocad,
 ];
 
 const SPEC_BY_ID = new Map(ALL_SPECS.map((spec) => [spec.id, spec]));
@@ -557,6 +590,14 @@ export const APP_PROFILE_PRESETS: AppProfilePreset[] = [
     iconName: 'Component',
     researchedAt: '2026-07',
   },
+  {
+    id: 'autocad',
+    displayName: 'AutoCAD',
+    processName: 'acad',
+    description: 'Typed command-line power: draw, modify, layers, osnaps, and zoom.',
+    iconName: 'DraftingCompass',
+    researchedAt: '2026-07',
+  },
 ];
 
 const PRESET_ACTION_IDS: Record<SupportedAppId, string[]> = {
@@ -621,6 +662,16 @@ const PRESET_ACTION_IDS: Record<SupportedAppId, string[]> = {
     'figma-properties-menu',
     'figma-quick-actions',
   ],
+  autocad: [
+    'autocad-repeat-last',
+    'autocad-cancel',
+    'autocad-zoom-extents',
+    'autocad-history',
+    'autocad-draw-menu',
+    'autocad-modify-menu',
+    'autocad-layers-menu',
+    'autocad-file-menu',
+  ],
 };
 
 function setupParameters(spec: AppActionSpec): Record<string, string | number | boolean> {
@@ -631,7 +682,7 @@ function setupParameters(spec: AppActionSpec): Record<string, string | number | 
 
 function createBubble(spec: AppActionSpec, angleIndex: number): BubbleConfig {
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     definitionId: spec.id,
     label: spec.label,
     iconName: spec.iconName,
@@ -655,7 +706,7 @@ function createSlot(definitionId: string, position: number): RingProfile['slots'
   if (!spec) throw new Error(`Unknown app-action preset: ${definitionId}`);
   const bubble = createBubble(spec, position);
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     position,
     assignment: {
       id: bubble.id,
@@ -681,7 +732,7 @@ export function createAppProfileFromPreset(
   const preset = APP_PROFILE_PRESETS.find((item) => item.id === presetId);
   if (!preset) throw new Error(`Unknown app profile preset: ${presetId}`);
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     name: `${preset.displayName} Ring`,
     kind: 'application',
     enabled: true,

@@ -69,7 +69,8 @@ export type SupportedAppId =
   | 'resolve'
   | 'premiere'
   | 'after-effects'
-  | 'figma';
+  | 'figma'
+  | 'autocad';
 
 /** Field metadata used by the action-specific toolbar. */
 export interface ActionEditorField {
@@ -312,10 +313,10 @@ export interface AppConfig {
   /** Unified profiles consumed by Dashboard V2. */
   profiles: RingProfile[];
   hotkey: string;
-  /** Legacy compatibility view of the General profile's assigned slots. */
-  bubbles: BubbleConfig[];
   /** Launch the app when Windows starts */
   launchAtStartup: boolean;
+  /** Allow Electron to use its normal GPU rendering path after the next restart. */
+  hardwareAcceleration: boolean;
   /** Whether the ring is enabled */
   ringEnabled: boolean;
   /** Trigger mode: A = click-click, B = hold-release */
@@ -326,8 +327,17 @@ export interface AppConfig {
   labelSize: LabelSize;
   /** Dashboard theme (light/dark/custom + accent) */
   theme: ThemeConfig;
-  /** Per-application bubble profiles */
-  appProfiles: AppProfile[];
+}
+
+/** Saved graphics preference and the GPU state reported by the current process. */
+export interface GraphicsAccelerationStatus {
+  preferenceEnabled: boolean;
+  startupPreferenceEnabled: boolean;
+  restartRequired: boolean;
+  statusReady: boolean;
+  hardwareAccelerationEnabled: boolean | null;
+  gpuCompositing: string | null;
+  rasterization: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -444,6 +454,9 @@ export interface DashboardStore {
   config: AppConfig | null;
   isLoading: boolean;
   isDirty: boolean;
+  graphicsStatus: GraphicsAccelerationStatus | null;
+  isGraphicsStatusLoading: boolean;
+  isRelaunching: boolean;
 
   loadConfig: () => Promise<void>;
   setHotkey: (hotkey: string) => Promise<void>;
@@ -451,26 +464,13 @@ export interface DashboardStore {
   setLabelSize: (labelSize: LabelSize) => Promise<void>;
   setTheme: (theme: ThemeConfig) => Promise<void>;
   setLaunchAtStartup: (value: boolean) => Promise<void>;
+  setHardwareAcceleration: (value: boolean) => Promise<void>;
   setRingEnabled: (value: boolean) => Promise<void>;
   setTriggerMode: (value: 'A' | 'B') => Promise<void>;
+  loadGraphicsAccelerationStatus: () => Promise<void>;
+  relaunchApp: () => Promise<void>;
   saveProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   addProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   removeProfile: (id: string) => Promise<MutationResult>;
   setSelectedGlobalProfile: (id: string | null) => Promise<MutationResult>;
-  setBubbles: (bubbles: BubbleConfig[]) => Promise<void>;
-  updateBubble: (id: string, patch: Partial<BubbleConfig>) => Promise<void>;
-  addBubble: (bubble: BubbleConfig) => Promise<void>;
-  removeBubble: (id: string) => Promise<void>;
-  reorderBubbles: (orderedIds: string[]) => Promise<void>;
-
-  // Per-app profile management
-  activeProfileId: string | null;
-  setActiveProfileId: (id: string | null) => void;
-  addAppProfile: (profile: AppProfile) => Promise<void>;
-  updateAppProfile: (id: string, patch: Partial<AppProfile>) => Promise<void>;
-  removeAppProfile: (id: string) => Promise<void>;
-  setProfileBubbles: (profileId: string, bubbles: BubbleConfig[]) => Promise<void>;
-  updateProfileBubble: (profileId: string, bubbleId: string, patch: Partial<BubbleConfig>) => Promise<void>;
-  addProfileBubble: (profileId: string, bubble: BubbleConfig) => Promise<void>;
-  removeProfileBubble: (profileId: string, bubbleId: string) => Promise<void>;
 }

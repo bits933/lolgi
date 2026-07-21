@@ -43,6 +43,7 @@ vi.mock('./keyboard', () => {
     executeKeyboardSequence: vi.fn(),
     executeKeyboardShortcutAsync: vi.fn(),
     executeKeyboardTextAsync: vi.fn(),
+    executeKeyboardTypeAsync: vi.fn(),
     TargetFocusError,
   };
 });
@@ -67,6 +68,7 @@ import {
   executeKeyboardSequence,
   executeKeyboardShortcutAsync,
   executeKeyboardTextAsync,
+  executeKeyboardTypeAsync,
   TargetFocusError,
 } from './keyboard';
 import { mediaPlayPause } from './media';
@@ -104,6 +106,7 @@ describe('action execution result contract', () => {
     vi.mocked(executeKeyboardShortcutAsync).mockResolvedValue(chordReceipt);
     vi.mocked(executeKeyboardSequence).mockResolvedValue([chordReceipt]);
     vi.mocked(executeKeyboardTextAsync).mockResolvedValue(textReceipt);
+    vi.mocked(executeKeyboardTypeAsync).mockResolvedValue([chordReceipt]);
     vi.mocked(recordActionResult).mockReturnValue({ eventId: 'diag1234-full' } as never);
   });
 
@@ -271,5 +274,17 @@ describe('action execution result contract', () => {
         },
       })
     );
+  });
+
+  it('types keys macro steps as real keystrokes rather than injected Unicode', async () => {
+    const result = await dispatchAction(
+      { bubbleId: 'one', actionType: 'macro', payload: 'keys:PL; Enter' },
+      { target }
+    );
+
+    expect(executeKeyboardTypeAsync).toHaveBeenCalledWith('PL', target);
+    expect(executeKeyboardTextAsync).not.toHaveBeenCalled();
+    expect(executeKeyboardShortcutAsync).toHaveBeenCalledWith('Enter', target);
+    expect(result).toMatchObject({ status: 'success', success: true });
   });
 });

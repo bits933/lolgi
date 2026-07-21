@@ -11,11 +11,6 @@ let manualOverride: ManualOverrideState | null = null;
 let ringForegroundApp: ForegroundAppInfo | null = null;
 let activeRingSession: { id: string; target: ForegroundWindowTarget | null } | null = null;
 
-/** @deprecated Prefer beginRingSession, which binds the app to an opaque session. */
-export function setRingForegroundApp(foregroundApp: ForegroundAppInfo | null): void {
-  ringForegroundApp = foregroundApp;
-}
-
 export function getRingForegroundApp(): ForegroundAppInfo | null {
   return ringForegroundApp;
 }
