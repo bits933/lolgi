@@ -34,6 +34,7 @@ const systemHarness = vi.hoisted(() => ({
 
 const windowHarness = vi.hoisted(() => ({
   overlay: null as any,
+  dashboard: null as any,
   hideOverlay: vi.fn(),
   showOverlay: vi.fn(),
   scheduleOverlayHideFallback: vi.fn(),
@@ -95,7 +96,7 @@ vi.mock('./actions/system', () => systemHarness);
 vi.mock('./windows', () => ({
   approveDashboardClose: vi.fn(),
   completeOverlayClose: windowHarness.completeOverlayClose,
-  getDashboardWindow: vi.fn(() => null),
+  getDashboardWindow: vi.fn(() => windowHarness.dashboard),
   getOverlayWindow: vi.fn(() => windowHarness.overlay),
   hideOverlay: windowHarness.hideOverlay,
   scheduleOverlayHideFallback: windowHarness.scheduleOverlayHideFallback,
@@ -165,10 +166,19 @@ function createOverlay() {
     setFocusable: vi.fn(),
     focus: vi.fn(),
     webContents: {
+      id: 101,
       send: vi.fn(),
     },
   };
   return overlay;
+}
+
+function overlayEvent() {
+  return { sender: { id: 101 } };
+}
+
+function dashboardEvent() {
+  return { sender: { id: 202 } };
 }
 
 async function registerHandlers(): Promise<void> {
@@ -185,7 +195,7 @@ async function registerHandlers(): Promise<void> {
 async function execute(payload: ActionExecutePayload): Promise<ActionResult> {
   const handler = electronHarness.handlers.get(ACTION_EXECUTE);
   if (!handler) throw new Error('ACTION_EXECUTE handler was not registered');
-  const pending = handler({}, payload) as Promise<ActionResult>;
+  const pending = handler(overlayEvent(), payload) as Promise<ActionResult>;
   await vi.advanceTimersByTimeAsync(200);
   return await pending;
 }
@@ -215,6 +225,11 @@ describe('ring session IPC action chain', () => {
     });
 
     windowHarness.overlay = createOverlay();
+    windowHarness.dashboard = {
+      destroyed: false,
+      isDestroyed: vi.fn(() => false),
+      webContents: { id: 202 },
+    };
     windowHarness.suppressOverlayBlurDismissal.mockReturnValue(vi.fn());
     systemHarness.requiresForegroundInput.mockImplementation(
       (actionType) => actionType === 'keyboard-shortcut'
@@ -228,6 +243,23 @@ describe('ring session IPC action chain', () => {
     });
 
     await registerHandlers();
+  });
+
+  it('rejects action calls from the wrong renderer and malformed action payloads', async () => {
+    const handler = electronHarness.handlers.get(ACTION_EXECUTE);
+    if (!handler) throw new Error('ACTION_EXECUTE handler was not registered');
+    const validPayload: ActionExecutePayload = {
+      bubbleId: 'group',
+      actionType: 'keyboard-shortcut',
+      payload: 'Ctrl+G',
+      ringSessionId: 'current-session',
+    };
+
+    expect(() => handler(dashboardEvent(), validPayload)).toThrow('IPC_SENDER_REJECTED');
+    await expect(handler(overlayEvent(), {
+      ...validPayload,
+      actionType: 'not-an-action',
+    })).rejects.toThrow('Action type is not supported');
   });
 
   it.each([
@@ -297,6 +329,38 @@ describe('ring session IPC action chain', () => {
     expect(actionHarness.dispatchAction.mock.calls[0][1].target).toBe(target);
   });
 
+  it('rejects a session replaced while the focus handoff is waiting', async () => {
+    const releaseBlurSuppression = vi.fn();
+    windowHarness.suppressOverlayBlurDismissal.mockReturnValueOnce(
+      releaseBlurSuppression
+    );
+    const handler = electronHarness.handlers.get(ACTION_EXECUTE);
+    if (!handler) throw new Error('ACTION_EXECUTE handler was not registered');
+
+    const pending = handler(overlayEvent(), {
+      bubbleId: 'zoom',
+      actionType: 'keyboard-shortcut',
+      payload: 'Ctrl+=',
+      keepOpen: true,
+      ringSessionId: 'current-session',
+    }) as Promise<ActionResult>;
+
+    runtimeHarness.currentSessionId = 'replacement-session';
+    runtimeHarness.target = { ...target, windowHandle: '515151', processId: 5678 };
+    await vi.advanceTimersByTimeAsync(200);
+
+    await expect(pending).resolves.toMatchObject({
+      status: 'target_unavailable',
+      success: false,
+      message: expect.stringContaining('no longer active'),
+    });
+    expect(actionHarness.dispatchAction).not.toHaveBeenCalled();
+    expect(windowHarness.overlay.setFocusable).toHaveBeenNthCalledWith(1, false);
+    expect(windowHarness.overlay.setFocusable).toHaveBeenLastCalledWith(true);
+    expect(windowHarness.overlay.focus).toHaveBeenCalledOnce();
+    expect(releaseBlurSuppression).toHaveBeenCalledOnce();
+  });
+
   it('reopens a one-shot ring at its previous bounds when dispatch fails', async () => {
     actionHarness.dispatchAction.mockResolvedValueOnce({
       status: 'target_unavailable',
@@ -346,13 +410,13 @@ describe('ring session IPC action chain', () => {
     const closeListener = electronHarness.listeners.get(OVERLAY_CLOSE);
     if (!closeListener) throw new Error('OVERLAY_CLOSE listener was not registered');
 
-    closeListener({}, 'old-session');
+    closeListener(overlayEvent(), 'old-session');
 
     expect(runtimeHarness.endRingSession).toHaveBeenCalledWith('old-session');
     expect(runtimeHarness.currentSessionId).toBe('new-session');
     expect(windowHarness.scheduleOverlayHideFallback).not.toHaveBeenCalled();
 
-    closeListener({}, 'new-session');
+    closeListener(overlayEvent(), 'new-session');
     expect(windowHarness.scheduleOverlayHideFallback).toHaveBeenCalledWith(
       'new-session'
     );
@@ -366,7 +430,7 @@ describe('ring session IPC action chain', () => {
       throw new Error('OVERLAY_ANIMATION_COMPLETE listener was not registered');
     }
 
-    animationListener({}, 'old-session');
+    animationListener(overlayEvent(), 'old-session');
 
     expect(runtimeHarness.endRingSession).toHaveBeenCalledWith('old-session');
     expect(windowHarness.completeOverlayClose).toHaveBeenCalledWith(
@@ -388,10 +452,10 @@ describe('ring session IPC action chain', () => {
     };
     graphicsHarness.getGraphicsAccelerationStatus.mockReturnValue(status);
 
-    expect(handler({}, false)).toEqual(status);
+    expect(handler(dashboardEvent(), false)).toEqual(status);
     expect(storeHarness.setHardwareAcceleration).toHaveBeenCalledWith(false);
     expect(graphicsHarness.getGraphicsAccelerationStatus).toHaveBeenCalledWith(false);
-    expect(() => handler({}, 'false')).toThrow('must be a boolean');
+    expect(() => handler(dashboardEvent(), 'false')).toThrow('must be a boolean');
   });
 
   it('returns current graphics status and relaunches only through the explicit IPC', async () => {
@@ -405,10 +469,10 @@ describe('ring session IPC action chain', () => {
     graphicsHarness.waitForGraphicsAccelerationStatus.mockResolvedValueOnce(status);
     graphicsHarness.getGraphicsAccelerationStatus.mockReturnValueOnce(status);
 
-    await expect(statusHandler({})).resolves.toBe(status);
+    await expect(statusHandler(dashboardEvent())).resolves.toBe(status);
     expect(graphicsHarness.waitForGraphicsAccelerationStatus).toHaveBeenCalledWith(true);
     expect(graphicsHarness.getGraphicsAccelerationStatus).toHaveBeenCalledWith(false);
-    expect(relaunchHandler({})).toBeUndefined();
+    expect(relaunchHandler(dashboardEvent())).toBeUndefined();
     expect(electronHarness.relaunch).toHaveBeenCalledOnce();
     expect(electronHarness.exit).toHaveBeenCalledWith(0);
   });

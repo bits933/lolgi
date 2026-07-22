@@ -80,7 +80,7 @@ export function listSourceFingerprintFiles(root = projectRoot) {
  */
 export function computeSourceFingerprint(root = projectRoot) {
   const hash = createHash('sha256');
-  hash.update('logi-actions-ring-source-v1\0', 'utf8');
+  hash.update('lolgi-actions-ring-source-v1\0', 'utf8');
   for (const file of listSourceFingerprintFiles(root)) {
     const contents = readFileSync(file.absolutePath);
     hash.update(`${Buffer.byteLength(file.relativePath, 'utf8')}:`, 'utf8');

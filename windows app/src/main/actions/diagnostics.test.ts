@@ -39,7 +39,7 @@ describe('bounded diagnostics', () => {
 
   it('persists a redacted bounded snapshot without window or document titles', async () => {
     const diagnostics = await import('./diagnostics');
-    const userData = await mkdtemp(join(tmpdir(), 'logi-diagnostics-'));
+    const userData = await mkdtemp(join(tmpdir(), 'lolgi-diagnostics-'));
     temporaryDirectories.push(userData);
     const build: RuntimeBuildIdentity = {
       version: '1.0.1',
@@ -89,6 +89,10 @@ describe('bounded diagnostics', () => {
     expect(persisted).toContain('"windowState"');
     expect(persisted).toContain('"focused": true');
     expect(persisted).toContain('"lastExternalForeground"');
+    expect(persisted).toContain('"executablePath": "Figma.exe"');
+    expect(persisted).toContain('"execPath": "electron.exe"');
+    expect(persisted).not.toContain('C:\\\\Apps\\\\Figma.exe');
+    expect(persisted).not.toContain('C:\\\\tools\\\\electron.exe');
     expect(persisted).toContain('"queryStartedAt": "2026-07-18T17:00:00.000Z"');
     expect(persisted).toContain('"queryCompletedAt": "2026-07-18T17:00:00.007Z"');
     expect(persisted).not.toContain('Secret design document');
@@ -109,5 +113,35 @@ describe('bounded diagnostics', () => {
     expect(result).toMatchObject({ copied: true, correlationId: 'ring-2', eventCount: 2 });
     expect(clipboardWriteText).toHaveBeenCalledOnce();
     expect(clipboardWriteText.mock.calls[0][0]).toContain('"correlationId": "ring-2"');
+  });
+
+  it('keeps only the 100 most recent diagnostic events', async () => {
+    const diagnostics = await import('./diagnostics');
+    for (let index = 0; index < 105; index += 1) {
+      diagnostics.recordActionResult(
+        'keyboard-shortcut',
+        { status: 'success', success: true },
+        index,
+      );
+    }
+
+    const events = diagnostics.getRecentActionResults();
+    expect(events).toHaveLength(100);
+    expect(events[0]?.durationMs).toBe(104);
+    expect(events.at(-1)?.durationMs).toBe(5);
+  });
+
+  it('reports a clipboard failure without throwing', async () => {
+    const diagnostics = await import('./diagnostics');
+    diagnostics.recordRingDiagnostic({ correlationId: 'ring-3', phase: 'opened' });
+    clipboardWriteText.mockImplementationOnce(() => {
+      throw new Error('clipboard unavailable');
+    });
+
+    expect(diagnostics.copyLastCorrelatedDiagnostic()).toMatchObject({
+      copied: false,
+      eventCount: 0,
+      message: 'clipboard unavailable',
+    });
   });
 });

@@ -8,7 +8,7 @@ import type { ActionResult } from '../../../../shared/types';
 export const ACTION_PENDING_THRESHOLD_MS = 5000;
 
 export const ACTION_PENDING_MESSAGE =
-  'This action is taking longer than expected. The ring will stay open until Logi receives a confirmed result.';
+  'This action is taking longer than expected. The ring will stay open until Lolgi receives a confirmed result.';
 
 export type ActionSettlementTiming = 'prompt' | 'late';
 export type ActionReleaseReason = 'settled' | 'timeout';

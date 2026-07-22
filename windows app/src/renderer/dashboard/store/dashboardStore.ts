@@ -1,6 +1,42 @@
 import { create } from 'zustand';
 import type { AppConfig, DashboardStore, LabelSize, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../../shared/types';
 
+export const THEME_PERSIST_DELAY_MS = 200;
+
+let pendingTheme: ThemeConfig | null = null;
+let themePersistTimer: ReturnType<typeof setTimeout> | null = null;
+let themeWriteChain: Promise<void> = Promise.resolve();
+
+export function flushPendingThemePersistence(): Promise<void> {
+  if (themePersistTimer) {
+    clearTimeout(themePersistTimer);
+    themePersistTimer = null;
+  }
+  const nextTheme = pendingTheme;
+  pendingTheme = null;
+  if (!nextTheme) return themeWriteChain;
+
+  // Serialize writes so a slow older IPC call can never land after a newer
+  // theme. Only this high-frequency color-picker path is coalesced.
+  themeWriteChain = themeWriteChain
+    .then(async () => {
+      const result = await window.electronAPI.setTheme(nextTheme);
+      if (!result.success) throw new Error('Theme persistence was rejected.');
+    })
+    .catch((error) => {
+      console.error('[dashboardStore] setTheme failed:', error);
+    });
+  return themeWriteChain;
+}
+
+function scheduleThemePersistence(theme: ThemeConfig): void {
+  pendingTheme = theme;
+  if (themePersistTimer) clearTimeout(themePersistTimer);
+  themePersistTimer = setTimeout(() => {
+    void flushPendingThemePersistence();
+  }, THEME_PERSIST_DELAY_MS);
+}
+
 function withUpdatedProfiles(config: AppConfig, profiles: RingProfile[]): AppConfig {
   return { ...config, profiles };
 }
@@ -64,13 +100,14 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       currentTheme.accentColor === theme.accentColor &&
       currentTheme.bubbleColor === theme.bubbleColor
     ) return;
-    const result = await window.electronAPI.setTheme(theme);
-    if (result.success) {
-      set((s) => ({
-        config: s.config ? { ...s.config, theme } : s.config,
-        isDirty: false,
-      }));
-    }
+    // Preview immediately, then persist only the final value from a picker
+    // burst. Dashboard windows hide instead of unloading, so the short timer
+    // continues and flushes even when the user closes Settings immediately.
+    set((s) => ({
+      config: s.config ? { ...s.config, theme } : s.config,
+      isDirty: false,
+    }));
+    scheduleThemePersistence(theme);
   },
 
   setLaunchAtStartup: async (value: boolean) => {

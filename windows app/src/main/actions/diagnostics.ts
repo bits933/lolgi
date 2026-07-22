@@ -1,7 +1,7 @@
 import { clipboard } from 'electron';
 import { randomUUID } from 'crypto';
 import { mkdir, readFile, writeFile } from 'fs/promises';
-import { dirname, join } from 'path';
+import { dirname, join, win32 } from 'path';
 import type { ActionResult, ActionType } from '../../shared/types';
 import type { RuntimeBuildIdentity } from '../../shared/buildInfo';
 import type {
@@ -74,7 +74,9 @@ function sanitizeTarget(value: unknown): DiagnosticTarget | undefined {
   if (hwnd) target.hwnd = hwnd;
   if (pid !== undefined && pid >= 0) target.pid = Math.trunc(pid);
   if (processName) target.processName = processName;
-  if (executablePath) target.executablePath = executablePath;
+  // Keep the executable name useful for debugging without persisting a user's
+  // account name or private directory structure.
+  if (executablePath) target.executablePath = win32.basename(executablePath);
   return Object.keys(target).length > 0 ? target : undefined;
 }
 
@@ -148,7 +150,7 @@ function sanitizeBuild(value: unknown): RuntimeBuildIdentity | undefined {
     sourceFingerprint: sourceFingerprint.toLowerCase(),
     mode: candidate.mode,
     isPackaged: candidate.isPackaged,
-    execPath,
+    execPath: win32.basename(execPath),
   };
 }
 

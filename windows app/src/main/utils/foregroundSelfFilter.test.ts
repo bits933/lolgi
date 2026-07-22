@@ -11,7 +11,7 @@ vi.mock('child_process', () => ({
   ) => {
     callback(null, {
       stdout: JSON.stringify({
-        Name: 'logi-actions-ring',
+        Name: 'lolgi-actions-ring',
         Path: process.execPath,
         Title: 'Lolgi Action Ring',
         Hwnd: '9001',

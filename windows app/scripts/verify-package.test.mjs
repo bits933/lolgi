@@ -87,12 +87,12 @@ describe('package verifier', () => {
   });
 
   it('hash-verifies a real ASAR and rejects a stale main bundle', async () => {
-    const temporaryRoot = mkdtempSync(join(tmpdir(), 'logi-package-verifier-'));
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'lolgi-package-verifier-'));
     const sourceRoot = join(temporaryRoot, 'source');
     const archivePath = join(temporaryRoot, 'app.asar');
     try {
       writeFixture(sourceRoot, 'package.json', JSON.stringify({
-        name: 'logi-package-verifier-fixture',
+        name: 'lolgi-package-verifier-fixture',
         version: '1.0.1',
         main: 'dist/main-bundled.js',
       }));

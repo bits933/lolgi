@@ -1,5 +1,10 @@
 import { app, BrowserWindow, dialog, Menu } from 'electron';
-import { createOverlayWindow, createDashboardWindow, showDashboard } from './windows';
+import {
+  createOverlayWindow,
+  createDashboardWindow,
+  getDashboardWindow,
+  showDashboard,
+} from './windows';
 import { createTray } from './tray';
 import { registerHotkey, unregisterAll } from './globalShortcut';
 import { registerIpcHandlers } from './ipc';
@@ -10,6 +15,7 @@ import { healPersistedAppIcons } from './utils/iconHeal';
 import { formatRuntimeBuildIdentity, getRuntimeBuildIdentity } from './buildIdentity';
 import { flushDiagnostics, initializeDiagnostics } from './actions/diagnostics';
 import { shutdownTargetedInputBroker } from './actions/keyboard';
+import { migrateLegacyUserData } from './legacyUserData';
 
 // The app can outlive the console that launched it. Ignore only the expected
 // broken-pipe error so diagnostic logging cannot crash the main process.
@@ -31,6 +37,7 @@ export function getIsQuitting(): boolean {
   return isQuitting;
 }
 
+migrateLegacyUserData();
 const startupIdentity = getRuntimeBuildIdentity();
 const gotLock = app.requestSingleInstanceLock({
   version: startupIdentity.version,
@@ -68,12 +75,11 @@ function startPrimaryInstance(): void {
     const attemptedExecPath = typeof attempted.execPath === 'string' ? attempted.execPath : 'unknown';
     console.warn(`[main] Blocked second instance v${attemptedVersion} from ${attemptedExecPath}`);
 
-    const wins = BrowserWindow.getAllWindows();
-    const dashboard = wins.find((window) => window.webContents.getURL().includes('dashboard'));
-    if (dashboard) {
-      dashboard.show();
-      dashboard.focus();
-    }
+    void app.whenReady().then(() => {
+      const dashboard = getDashboardWindow();
+      if (dashboard?.isMinimized()) dashboard.restore();
+      showDashboard();
+    });
   });
 
   void app.whenReady()

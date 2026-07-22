@@ -144,7 +144,7 @@ export function Sidebar({
         <div className={styles.brandLockup} aria-hidden={collapsed}>
           <div className={styles.logoIcon}><CircleDot size={18} /></div>
           <div className={styles.logoText}>
-            <span className={styles.logoBrand}>Logi</span>
+            <span className={styles.logoBrand}>Lolgi</span>
             <span className={styles.logoProduct}>Action Ring</span>
           </div>
         </div>

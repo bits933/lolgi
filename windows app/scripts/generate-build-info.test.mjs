@@ -50,7 +50,7 @@ describe('generated build identity', () => {
   });
 
   it('fingerprints normalized source/config inputs and excludes generated output', () => {
-    const root = mkdtempSync(join(tmpdir(), 'logi-source-fingerprint-'));
+    const root = mkdtempSync(join(tmpdir(), 'lolgi-source-fingerprint-'));
     try {
       mkdirSync(join(root, 'src'), { recursive: true });
       mkdirSync(join(root, 'dist'), { recursive: true });

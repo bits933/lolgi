@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ForegroundWindowTarget } from '../shared/types';
+import type { ForegroundAppInfo, ForegroundWindowTarget } from '../shared/types';
 import {
   beginRingSession,
+  clearManualProfileOverride,
   endActiveRingSession,
   endRingSession,
+  getManualProfileOverrideId,
   getRingSessionTarget,
   isRingSessionCurrent,
+  setManualProfileOverride,
 } from './profileRuntime';
 
 function target(windowHandle: string, processId: number): ForegroundWindowTarget {
@@ -19,7 +22,10 @@ function target(windowHandle: string, processId: number): ForegroundWindowTarget
 }
 
 describe('ring target sessions', () => {
-  afterEach(() => endActiveRingSession());
+  afterEach(() => {
+    endActiveRingSession();
+    clearManualProfileOverride();
+  });
 
   it('resolves only the target bound to the current opaque session', () => {
     const original = target('101', 11);
@@ -52,5 +58,31 @@ describe('ring target sessions', () => {
 
     expect(isRingSessionCurrent(session.id)).toBe(false);
     expect(getRingSessionTarget(session.id)).toBeNull();
+  });
+});
+
+describe('manual profile override process matching', () => {
+  afterEach(() => clearManualProfileOverride());
+
+  function foreground(processName: string): ForegroundAppInfo {
+    return {
+      processName,
+      executablePath: 'C:\\Apps\\Figma.exe',
+      windowTitle: 'Design file',
+    };
+  }
+
+  it('uses the same case and .exe normalization as automatic profile matching', () => {
+    setManualProfileOverride('figma-profile', foreground('  Figma.EXE  '));
+
+    expect(getManualProfileOverrideId(foreground('figma'))).toBe('figma-profile');
+    expect(getManualProfileOverrideId(foreground('FIGMA.exe'))).toBe('figma-profile');
+  });
+
+  it('clears the override when the normalized foreground process changes', () => {
+    setManualProfileOverride('figma-profile', foreground('figma.exe'));
+
+    expect(getManualProfileOverrideId(foreground('chrome.exe'))).toBeNull();
+    expect(getManualProfileOverrideId(foreground('figma.exe'))).toBeNull();
   });
 });

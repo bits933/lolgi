@@ -38,8 +38,8 @@ DIAGNOSTICS
 
 The app retains up to 100 recent diagnostic events locally to help explain
 action and ring failures. These may include timestamps, action type and result,
-profile name or ID, process name, executable path, application/window state,
-and build information. The diagnostic log is stored locally in the app's
+profile name or ID, process name, executable filename (without its directory),
+application/window state, and build information. The diagnostic log is stored locally in the app's
 application-data folder.
 
 The app does not upload diagnostic events. If you choose Copy last diagnostic,

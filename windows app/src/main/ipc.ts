@@ -43,6 +43,8 @@ import type {
   RingSize,
   ThemeConfig,
 } from '../shared/types';
+import { ACTION_CATALOG } from '../shared/actionCatalog';
+import { APP_ACTION_CATALOG } from '../shared/defaultProfiles';
 import { dispatchAction, getSystemState } from './actions/index';
 import { requiresForegroundInput } from './actions/system';
 import {
@@ -102,6 +104,121 @@ import {
  */
 const FOREGROUND_HANDOFF_MS = 45;
 
+type IpcSource = 'overlay' | 'dashboard';
+
+const KNOWN_ACTION_TYPES = new Set([
+  ...ACTION_CATALOG.map((definition) => definition.actionType),
+  ...APP_ACTION_CATALOG.map((definition) => definition.actionType),
+]);
+const RING_SIZES = new Set<RingSize>(['small', 'medium', 'large']);
+const LABEL_SIZES = new Set<LabelSize>(['small', 'medium', 'large']);
+const THEME_MODES = new Set<ThemeConfig['mode']>(['system', 'light', 'dark', 'custom']);
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function expectedWindow(source: IpcSource): BrowserWindow | null {
+  return source === 'overlay' ? getOverlayWindow() : getDashboardWindow();
+}
+
+function assertIpcSender(
+  event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent,
+  source: IpcSource,
+  channel: string
+): void {
+  const expected = expectedWindow(source);
+  if (
+    !expected
+    || expected.isDestroyed()
+    || event.sender.id !== expected.webContents.id
+  ) {
+    throw new Error(`[IPC_SENDER_REJECTED] ${channel}`);
+  }
+}
+
+function handleFrom(
+  channel: string,
+  source: IpcSource,
+  listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any
+): void {
+  ipcMain.handle(channel, (event, ...args) => {
+    assertIpcSender(event, source, channel);
+    return listener(event, ...args);
+  });
+}
+
+function onFrom(
+  channel: string,
+  source: IpcSource,
+  listener: (event: Electron.IpcMainEvent, ...args: any[]) => void
+): void {
+  ipcMain.on(channel, (event, ...args) => {
+    try {
+      assertIpcSender(event, source, channel);
+    } catch (error) {
+      console.warn(`[ipc] Rejected one-way message on ${channel}:`, error);
+      return;
+    }
+    listener(event, ...args);
+  });
+}
+
+function requireString(value: unknown, name: string, maxLength: number): string {
+  if (typeof value !== 'string' || !value.trim() || value.length > maxLength) {
+    throw new TypeError(`${name} must be a non-empty string no longer than ${maxLength} characters.`);
+  }
+  return value;
+}
+
+function assertActionExecutePayload(value: unknown): asserts value is ActionExecutePayload {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Action payload must be an object.');
+  }
+  const payload = value as Partial<ActionExecutePayload>;
+  requireString(payload.bubbleId, 'Bubble ID', 160);
+  if (typeof payload.actionType !== 'string' || !KNOWN_ACTION_TYPES.has(payload.actionType)) {
+    throw new TypeError('Action type is not supported.');
+  }
+  if (payload.definitionId !== undefined) requireString(payload.definitionId, 'Definition ID', 160);
+  if (payload.ringSessionId !== undefined) requireString(payload.ringSessionId, 'Ring session ID', 100);
+  if (payload.payload !== undefined && (typeof payload.payload !== 'string' || payload.payload.length > 65_536)) {
+    throw new TypeError('Action data must be a string no longer than 65536 characters.');
+  }
+  if (payload.keepOpen !== undefined && typeof payload.keepOpen !== 'boolean') {
+    throw new TypeError('keepOpen must be a boolean.');
+  }
+  if (payload.parameters !== undefined) {
+    if (!payload.parameters || typeof payload.parameters !== 'object' || Array.isArray(payload.parameters)) {
+      throw new TypeError('Action parameters must be an object.');
+    }
+    const entries = Object.entries(payload.parameters);
+    if (entries.length > 64 || entries.some(([key, entry]) => (
+      !key
+      || key.length > 100
+      || !['string', 'number', 'boolean'].includes(typeof entry)
+      || (typeof entry === 'string' && entry.length > 8_192)
+      || (typeof entry === 'number' && !Number.isFinite(entry))
+    ))) {
+      throw new TypeError('Action parameters are invalid.');
+    }
+  }
+}
+
+function assertTheme(value: unknown): asserts value is ThemeConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Theme must be an object.');
+  }
+  const theme = value as Partial<ThemeConfig>;
+  if (
+    !theme.mode
+    || !THEME_MODES.has(theme.mode)
+    || typeof theme.accentColor !== 'string'
+    || !HEX_COLOR.test(theme.accentColor)
+    || typeof theme.bubbleColor !== 'string'
+    || !HEX_COLOR.test(theme.bubbleColor)
+  ) {
+    throw new TypeError('Theme settings are invalid.');
+  }
+}
+
 function addRejectedActionDiagnostic(
   payload: ActionExecutePayload,
   result: ActionResult,
@@ -129,12 +246,25 @@ function addRejectedActionDiagnostic(
   };
 }
 
+function rejectStaleAction(
+  payload: ActionExecutePayload,
+  target: ForegroundWindowTarget | null
+): ActionResult {
+  return addRejectedActionDiagnostic(payload, {
+    status: 'target_unavailable',
+    success: false,
+    error: 'The ring session is no longer active.',
+    message: 'The ring session is no longer active.',
+  }, target);
+}
+
 export function registerIpcHandlers(): void {
   // ---------------------------------------------------------------------------
   // Overlay → Main
   // ---------------------------------------------------------------------------
 
-  ipcMain.handle(ACTION_EXECUTE, async (_event, payload: ActionExecutePayload) => {
+  handleFrom(ACTION_EXECUTE, 'overlay', async (_event, payload: unknown) => {
+    assertActionExecutePayload(payload);
     const overlay = getOverlayWindow();
     const overlayVisible = Boolean(overlay && !overlay.isDestroyed() && overlay.isVisible());
     const restoreBounds = !payload.keepOpen && overlayVisible ? overlay!.getBounds() : null;
@@ -145,13 +275,7 @@ export function registerIpcHandlers(): void {
     // The preload attaches the opaque ID from ring:open. Reject delayed renderer
     // work from a previous ring before it can launch anything or synthesize input.
     if (!sessionIsCurrent) {
-      const staleResult: ActionResult = {
-        status: 'target_unavailable',
-        success: false,
-        error: 'The ring session is no longer active.',
-        message: 'The ring session is no longer active.',
-      };
-      return addRejectedActionDiagnostic(payload, staleResult, sessionTarget);
+      return rejectStaleAction(payload, sessionTarget);
     }
     if (needsTarget && !sessionTarget) {
       const unavailableResult: ActionResult = {
@@ -203,6 +327,24 @@ export function registerIpcHandlers(): void {
       throw error;
     }
 
+    // A second hotkey can replace the ring session while the focus handoff is
+    // awaiting Windows. Revalidate at the last possible point so an old click
+    // can never dispatch to the window captured by a superseded ring.
+    if (!isRingSessionCurrent(payload.ringSessionId)) {
+      if (
+        yieldForegroundFocus
+        && payload.keepOpen
+        && overlay
+        && !overlay.isDestroyed()
+        && overlay.isVisible()
+      ) {
+        overlay.setFocusable(true);
+        overlay.focus();
+      }
+      releaseBlurDismissal?.();
+      return rejectStaleAction(payload, sessionTarget);
+    }
+
     setForegroundPollingBusy(true);
     const result = await dispatchAction(payload, { target: sessionTarget }).finally(() => {
       setForegroundPollingBusy(false);
@@ -220,12 +362,13 @@ export function registerIpcHandlers(): void {
     return result;
   });
 
-  ipcMain.handle(ACTION_GET_DIAGNOSTICS, () => getRecentActionResults());
-  ipcMain.handle(BUILD_IDENTITY_GET, () => getRuntimeBuildIdentity());
-  ipcMain.handle(DIAGNOSTICS_GET_RECENT, () => getRecentDiagnosticEvents());
-  ipcMain.handle(DIAGNOSTICS_COPY_LAST, () => copyLastCorrelatedDiagnostic());
+  handleFrom(ACTION_GET_DIAGNOSTICS, 'overlay', () => getRecentActionResults());
+  handleFrom(BUILD_IDENTITY_GET, 'dashboard', () => getRuntimeBuildIdentity());
+  handleFrom(DIAGNOSTICS_GET_RECENT, 'dashboard', () => getRecentDiagnosticEvents());
+  handleFrom(DIAGNOSTICS_COPY_LAST, 'dashboard', () => copyLastCorrelatedDiagnostic());
 
-  ipcMain.on(OVERLAY_CLOSE, (_event, ringSessionId?: string) => {
+  onFrom(OVERLAY_CLOSE, 'overlay', (_event, ringSessionId?: unknown) => {
+    if (ringSessionId !== undefined && typeof ringSessionId !== 'string') return;
     const closeIsCurrent = isRingSessionCurrent(ringSessionId);
     endRingSession(ringSessionId);
     if (closeIsCurrent && ringSessionId) {
@@ -233,12 +376,13 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.on(OVERLAY_ANIMATION_COMPLETE, (_event, ringSessionId?: string) => {
+  onFrom(OVERLAY_ANIMATION_COMPLETE, 'overlay', (_event, ringSessionId?: unknown) => {
+    if (ringSessionId !== undefined && typeof ringSessionId !== 'string') return;
     endRingSession(ringSessionId);
     completeOverlayClose(ringSessionId);
   });
 
-  ipcMain.handle(SYSTEM_GET_STATE, async () => {
+  handleFrom(SYSTEM_GET_STATE, 'overlay', async () => {
     return await getSystemState();
   });
 
@@ -246,39 +390,48 @@ export function registerIpcHandlers(): void {
   // Dashboard → Main
   // ---------------------------------------------------------------------------
 
-  ipcMain.handle(CONFIG_GET, () => {
+  handleFrom(CONFIG_GET, 'dashboard', () => {
     return getConfig();
   });
 
-  ipcMain.handle(CONFIG_SET_HOTKEY, (_event, hotkey: string) => {
-    const success = registerHotkey(hotkey);
-    if (success) setHotkey(hotkey);
+  handleFrom(CONFIG_SET_HOTKEY, 'dashboard', (_event, hotkey: unknown) => {
+    const validatedHotkey = requireString(hotkey, 'Hotkey', 100);
+    const success = registerHotkey(validatedHotkey);
+    if (success) setHotkey(validatedHotkey);
     updateTrayMenu();
     return { success };
   });
 
-  ipcMain.handle(CONFIG_SET_RING_SIZE, (_event, ringSize: RingSize) => {
-    setRingSize(ringSize);
+  handleFrom(CONFIG_SET_RING_SIZE, 'dashboard', (_event, ringSize: unknown) => {
+    if (typeof ringSize !== 'string' || !RING_SIZES.has(ringSize as RingSize)) {
+      throw new TypeError('Ring size is invalid.');
+    }
+    setRingSize(ringSize as RingSize);
     return { success: true };
   });
 
-  ipcMain.handle(CONFIG_SET_LABEL_SIZE, (_event, labelSize: LabelSize) => {
-    setLabelSize(labelSize);
+  handleFrom(CONFIG_SET_LABEL_SIZE, 'dashboard', (_event, labelSize: unknown) => {
+    if (typeof labelSize !== 'string' || !LABEL_SIZES.has(labelSize as LabelSize)) {
+      throw new TypeError('Label size is invalid.');
+    }
+    setLabelSize(labelSize as LabelSize);
     return { success: true };
   });
 
-  ipcMain.handle(CONFIG_SET_THEME, (_event, theme: ThemeConfig) => {
+  handleFrom(CONFIG_SET_THEME, 'dashboard', (_event, theme: unknown) => {
+    assertTheme(theme);
     setTheme(theme);
     return { success: true };
   });
 
-  ipcMain.handle(CONFIG_SET_LAUNCH_AT_STARTUP, (_event, value: boolean) => {
+  handleFrom(CONFIG_SET_LAUNCH_AT_STARTUP, 'dashboard', (_event, value: unknown) => {
+    if (typeof value !== 'boolean') throw new TypeError('Launch-at-startup preference must be a boolean.');
     setLaunchAtStartup(value);
-    app.setLoginItemSettings({ openAtLogin: value });
+    app.setLoginItemSettings({ openAtLogin: value, path: process.execPath });
     return { success: true };
   });
 
-  ipcMain.handle(CONFIG_SET_HARDWARE_ACCELERATION, (_event, value: unknown) => {
+  handleFrom(CONFIG_SET_HARDWARE_ACCELERATION, 'dashboard', (_event, value: unknown) => {
     if (typeof value !== 'boolean') {
       throw new TypeError('Hardware acceleration preference must be a boolean.');
     }
@@ -286,17 +439,18 @@ export function registerIpcHandlers(): void {
     return getGraphicsAccelerationStatus(value);
   });
 
-  ipcMain.handle(GRAPHICS_STATUS_GET, async () => {
+  handleFrom(GRAPHICS_STATUS_GET, 'dashboard', async () => {
     await waitForGraphicsAccelerationStatus(getConfig().hardwareAcceleration);
     return getGraphicsAccelerationStatus(getConfig().hardwareAcceleration);
   });
 
-  ipcMain.handle(APP_RELAUNCH, () => {
+  handleFrom(APP_RELAUNCH, 'dashboard', () => {
     app.relaunch();
     app.exit(0);
   });
 
-  ipcMain.handle(CONFIG_SET_RING_ENABLED, (_event, value: boolean) => {
+  handleFrom(CONFIG_SET_RING_ENABLED, 'dashboard', (_event, value: unknown) => {
+    if (typeof value !== 'boolean') throw new TypeError('Ring enabled preference must be a boolean.');
     if (value) {
       const success = registerHotkey();
       if (!success) return { success: false };
@@ -308,12 +462,13 @@ export function registerIpcHandlers(): void {
     return { success: true };
   });
 
-  ipcMain.handle(CONFIG_SET_TRIGGER_MODE, (_event, value: 'A' | 'B') => {
+  handleFrom(CONFIG_SET_TRIGGER_MODE, 'dashboard', (_event, value: unknown) => {
+    if (value !== 'A' && value !== 'B') throw new TypeError('Trigger mode must be A or B.');
     setTriggerMode(value);
     return { success: true };
   });
 
-  ipcMain.handle(DIALOG_PICK_FILE, async (event) => {
+  handleFrom(DIALOG_PICK_FILE, 'dashboard', async (event) => {
     const allWindows = require('electron').BrowserWindow.getAllWindows() as Electron.BrowserWindow[];
     const win = allWindows.find((w) => w.webContents.id === event.sender.id) ?? null;
     const result = await dialog.showOpenDialog(win ?? allWindows[0], {
@@ -326,7 +481,7 @@ export function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0] ?? null;
   });
 
-  ipcMain.handle(DIALOG_PICK_FOLDER, async (event) => {
+  handleFrom(DIALOG_PICK_FOLDER, 'dashboard', async (event) => {
     const allWindows = require('electron').BrowserWindow.getAllWindows() as Electron.BrowserWindow[];
     const win = allWindows.find((w) => w.webContents.id === event.sender.id) ?? null;
     const result = await dialog.showOpenDialog(win ?? allWindows[0], {
@@ -335,16 +490,21 @@ export function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0] ?? null;
   });
 
-  ipcMain.handle(PROFILE_V2_SAVE, (_event, profile: RingProfile) => saveProfile(profile));
-  ipcMain.handle(PROFILE_V2_ADD, (_event, profile: RingProfile) => addProfile(profile));
-  ipcMain.handle(PROFILE_V2_REMOVE, (_event, id: string) => removeProfile(id));
-  ipcMain.handle(PROFILE_V2_SET_GLOBAL, (_event, id: string | null) => setSelectedGlobalProfile(id));
+  handleFrom(PROFILE_V2_SAVE, 'dashboard', (_event, profile: RingProfile) => saveProfile(profile));
+  handleFrom(PROFILE_V2_ADD, 'dashboard', (_event, profile: RingProfile) => addProfile(profile));
+  handleFrom(PROFILE_V2_REMOVE, 'dashboard', (_event, id: unknown) => removeProfile(requireString(id, 'Profile ID', 160)));
+  handleFrom(PROFILE_V2_SET_GLOBAL, 'dashboard', (_event, id: unknown) => {
+    if (id !== null && typeof id !== 'string') throw new TypeError('Global profile ID is invalid.');
+    if (typeof id === 'string') requireString(id, 'Global profile ID', 160);
+    return setSelectedGlobalProfile(id as string | null);
+  });
 
-  ipcMain.on(DASHBOARD_SET_DIRTY, (_event, value: boolean) => {
+  onFrom(DASHBOARD_SET_DIRTY, 'dashboard', (_event, value: unknown) => {
+    if (typeof value !== 'boolean') return;
     setDashboardDirty(value);
   });
 
-  ipcMain.on(DASHBOARD_CLOSE_APPROVE, () => {
+  onFrom(DASHBOARD_CLOSE_APPROVE, 'dashboard', () => {
     approveDashboardClose();
   });
 
@@ -352,7 +512,7 @@ export function registerIpcHandlers(): void {
   // App Detection (Dashboard → Main)
   // ---------------------------------------------------------------------------
 
-  ipcMain.handle(APP_DETECT_FOREGROUND, async () => {
+  handleFrom(APP_DETECT_FOREGROUND, 'dashboard', async () => {
     const dashboard = getDashboardWindow();
     dashboard?.hide();
     try {
@@ -364,23 +524,23 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle(APP_LIST_RUNNING, async () => {
+  handleFrom(APP_LIST_RUNNING, 'dashboard', async () => {
     return await listRunningApps();
   });
 
-  ipcMain.handle(APP_LIST_INSTALLED, async () => {
+  handleFrom(APP_LIST_INSTALLED, 'dashboard', async () => {
     return await listInstalledApps();
   });
 
-  ipcMain.handle(APP_LIST_ALL, async () => {
+  handleFrom(APP_LIST_ALL, 'dashboard', async () => {
     return await listAllApps();
   });
 
-  ipcMain.handle(APP_EXTRACT_ICON, async (_event, path: string) => {
-    return await extractAppIcon(path);
+  handleFrom(APP_EXTRACT_ICON, 'dashboard', async (_event, path: unknown) => {
+    return await extractAppIcon(requireString(path, 'Application path', 32_768));
   });
 
-  ipcMain.handle(APP_FETCH_URL_ICON, async (_event, url: string) => {
-    return await fetchUrlIcon(url);
+  handleFrom(APP_FETCH_URL_ICON, 'dashboard', async (_event, url: unknown) => {
+    return await fetchUrlIcon(requireString(url, 'URL', 8_192));
   });
 }

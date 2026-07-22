@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CircleDot, Copy, Info, Keyboard, Power, RotateCcw, Sparkles } from 'lucide-react';
-import { useDashboardStore } from '../../store/dashboardStore';
+import { flushPendingThemePersistence, useDashboardStore } from '../../store/dashboardStore';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_BUBBLE_COLOR } from '../../../../shared/constants';
 import { createEmptySlots } from '../../../../shared/profileUtils';
 import type { LabelSize, RingSize, ThemeConfig, ThemeMode } from '../../../../shared/types';
@@ -94,8 +94,9 @@ export function GeneralSettings(): React.ReactElement {
             ? 'Hardware accelerated'
             : 'Unavailable or driver-blocked';
 
-  const applyTheme = (patch: Partial<ThemeConfig>) => {
+  const applyTheme = (patch: Partial<ThemeConfig>, persistImmediately = false) => {
     void setTheme({ mode: themeMode, accentColor, bubbleColor, ...patch });
+    if (persistImmediately) void flushPendingThemePersistence();
   };
 
   const handleReset = async () => {
@@ -155,7 +156,7 @@ export function GeneralSettings(): React.ReactElement {
             <div className={styles.optionLabel}>Dashboard theme</div>
             <div className={styles.threeSegments} role="group" aria-label="Dashboard theme">
               {THEME_MODE_OPTIONS.map((option) => (
-                <button key={option.value} type="button" className={themeMode === option.value ? styles.segmentActive : ''} onClick={() => applyTheme({ mode: option.value })} aria-pressed={themeMode === option.value}>
+                <button key={option.value} type="button" className={themeMode === option.value ? styles.segmentActive : ''} onClick={() => applyTheme({ mode: option.value }, true)} aria-pressed={themeMode === option.value}>
                   <strong>{option.label}</strong><small>{option.hint}</small>
                 </button>
               ))}
@@ -163,16 +164,16 @@ export function GeneralSettings(): React.ReactElement {
             {themeMode === 'custom' && (
               <div className={styles.row}>
                 <div><strong>Accent color</strong><small>Used for selections, controls, and ring highlights.</small></div>
-                <label className={styles.colorPicker}><input type="color" value={accentColor} onChange={(event) => applyTheme({ accentColor: event.target.value })} /><span>{accentColor}</span></label>
+                <label className={styles.colorPicker}><input type="color" value={accentColor} onChange={(event) => applyTheme({ accentColor: event.target.value })} onBlur={() => void flushPendingThemePersistence()} /><span>{accentColor}</span></label>
               </div>
             )}
             <div className={styles.row}>
               <div><strong>Bubble color</strong><small>Background color of the ring's action bubbles. Icons adjust automatically for contrast.</small></div>
               <label className={styles.colorPicker}>
-                <input type="color" value={bubbleColor} onChange={(event) => applyTheme({ bubbleColor: event.target.value })} />
+                <input type="color" value={bubbleColor} onChange={(event) => applyTheme({ bubbleColor: event.target.value })} onBlur={() => void flushPendingThemePersistence()} />
                 <span>{bubbleColor}</span>
                 {bubbleColor.toLowerCase() !== DEFAULT_BUBBLE_COLOR && (
-                  <button type="button" className={styles.colorReset} onClick={() => applyTheme({ bubbleColor: DEFAULT_BUBBLE_COLOR })} title="Reset to default">Reset</button>
+                  <button type="button" className={styles.colorReset} onClick={() => applyTheme({ bubbleColor: DEFAULT_BUBBLE_COLOR }, true)} title="Reset to default">Reset</button>
                 )}
               </label>
             </div>

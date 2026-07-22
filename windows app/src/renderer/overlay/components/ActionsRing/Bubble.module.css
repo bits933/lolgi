@@ -279,3 +279,24 @@
   pointer-events: none;
   z-index: 0;
 }
+
+@media (forced-colors: active) {
+  .bubbleSurface {
+    border-color: ButtonText !important;
+    forced-color-adjust: auto;
+  }
+
+  .bubble:focus-visible .bubbleSurface {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .label {
+    color: CanvasText;
+    background: Canvas;
+    border: 1px solid ButtonText;
+    box-shadow: none;
+    backdrop-filter: none;
+    text-shadow: none;
+  }
+}

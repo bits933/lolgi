@@ -60,6 +60,13 @@ export function ActionsRing(): React.ReactElement | null {
   const [subRingParentPos, setSubRingParentPos] = React.useState<BubblePosition | null>(null);
   const [isSubRingVisible, setIsSubRingVisible] = React.useState(false);
   const [isSubRingClosing, setIsSubRingClosing] = React.useState(false);
+  const subRingBackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSubRingBackTimer = useCallback(() => {
+    if (subRingBackTimerRef.current === null) return;
+    clearTimeout(subRingBackTimerRef.current);
+    subRingBackTimerRef.current = null;
+  }, []);
 
   const cancelActiveActionExecution = useCallback(() => {
     activeActionExecutionRef.current?.cancel();
@@ -74,8 +81,9 @@ export function ActionsRing(): React.ReactElement | null {
   useEffect(
     () => () => {
       cancelActiveActionExecution();
+      clearSubRingBackTimer();
     },
-    [cancelActiveActionExecution]
+    [cancelActiveActionExecution, clearSubRingBackTimer]
   );
 
   // ---------------------------------------------------------------------------
@@ -98,6 +106,7 @@ export function ActionsRing(): React.ReactElement | null {
       };
     } else {
       // Force-clear sub-ring immediately — window is hiding, no exit animation needed
+      clearSubRingBackTimer();
       setSubRingParent(null);
       setSubRingParentPos(null);
       setIsSubRingVisible(false);
@@ -112,7 +121,7 @@ export function ActionsRing(): React.ReactElement | null {
       }, EXIT_UNMOUNT_DELAY_MS);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, setHoveredIndex]);
+  }, [clearSubRingBackTimer, isOpen, setHoveredIndex]);
 
   useEffect(() => {
     if (!subRingParent) {
@@ -129,6 +138,17 @@ export function ActionsRing(): React.ReactElement | null {
       cancelAnimationFrame(raf2);
     };
   }, [subRingParent]);
+
+  // A new ring session replaces the main bubble array even when the overlay
+  // was already open. Cancel an old folder's exit callback before it can
+  // mutate the replacement session.
+  useEffect(() => {
+    clearSubRingBackTimer();
+    setSubRingParent(null);
+    setSubRingParentPos(null);
+    setIsSubRingVisible(false);
+    setIsSubRingClosing(false);
+  }, [bubbles, clearSubRingBackTimer]);
 
   useEffect(() => {
     if (!actionError) return;
@@ -399,14 +419,16 @@ export function ActionsRing(): React.ReactElement | null {
   // Sub-ring back button — animate out, restore main ring
   const handleSubRingBack = useCallback(() => {
     if (isSubRingClosing) return;
+    clearSubRingBackTimer();
     setIsSubRingClosing(true);
     setIsSubRingVisible(false);
-    setTimeout(() => {
+    subRingBackTimerRef.current = setTimeout(() => {
+      subRingBackTimerRef.current = null;
       setSubRingParent(null);
       setSubRingParentPos(null);
       setIsSubRingClosing(false);
     }, EXIT_UNMOUNT_DELAY_MS);
-  }, [isSubRingClosing]);
+  }, [clearSubRingBackTimer, isSubRingClosing]);
 
   // Center button — always closes the whole ring. While a folder is expanded the
   // parent anchor (rendered by SubRing) is the "back" affordance, and the center

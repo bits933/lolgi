@@ -36,4 +36,18 @@ describe('URL launcher', () => {
     expect(mocks.openExternal).toHaveBeenCalledWith('https://www.youtube.com/');
     expect(mocks.exec).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['javascript:alert(1)', 'file:///C:/secret.txt', 'data:text/plain,hello'])(
+    'rejects the unsafe protocol in %s',
+    async (url) => {
+      await expect(openUrl(url)).rejects.toThrow();
+      expect(mocks.openExternal).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows mailto links through the system handler', async () => {
+    await openUrl('mailto:hello@example.com');
+
+    expect(mocks.openExternal).toHaveBeenCalledWith('mailto:hello@example.com');
+  });
 });

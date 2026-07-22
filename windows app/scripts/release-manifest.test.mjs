@@ -27,7 +27,7 @@ function writeFixture(root, relativePath, contents) {
 }
 
 async function createFixture() {
-  const root = mkdtempSync(join(tmpdir(), 'logi-release-manifest-'));
+  const root = mkdtempSync(join(tmpdir(), 'lolgi-release-manifest-'));
   temporaryDirectories.push(root);
   writeFixture(root, 'package.json', '{"name":"fixture","version":"1.0.1"}\n');
   writeFixture(root, 'src/app.ts', 'export const release = "current";\n');

@@ -112,7 +112,7 @@ describe('event-driven foreground tracker', () => {
 
   it('keeps raw foreground separate while suspended and safely promotes on resume', () => {
     const figma = target('Figma', 101, '4101');
-    const ownOverlay = target('logi-actions-ring', process.pid, '4999');
+    const ownOverlay = target('lolgi-actions-ring', process.pid, '4999');
     const chrome = target('chrome', 202, '4202');
 
     __foregroundTrackerTestApi.observe(figma);
@@ -161,7 +161,7 @@ describe('event-driven foreground tracker', () => {
 
   it('never overwrites the last external target with null or an owned target', () => {
     const figma = target('Figma', 101, '4101');
-    const ownOverlay = target('logi-actions-ring', process.pid, '4999');
+    const ownOverlay = target('lolgi-actions-ring', process.pid, '4999');
 
     __foregroundTrackerTestApi.observe(figma);
     __foregroundTrackerTestApi.observe(null);
@@ -173,7 +173,7 @@ describe('event-driven foreground tracker', () => {
 
   it('preserves Figma through more than five repeated owned overlay observations', () => {
     const figma = target('Figma', 101, '4101');
-    const ownProcessOverlay = target('logi-actions-ring', process.pid, '4998');
+    const ownProcessOverlay = target('lolgi-actions-ring', process.pid, '4998');
     const ownedHandleOverlay = target('renderer-host', 303, '4999');
 
     registerOwnedWindowHandle(ownedHandleOverlay.windowHandle);

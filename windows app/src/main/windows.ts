@@ -17,11 +17,16 @@ let dashboardWindowHandle: string | null = null;
 let dashboardDirty = false;
 let overlayHideSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingOverlayCloseId: string | null = null;
+let overlayRendererRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+let overlayRendererRecoveryTimestamps: number[] = [];
 const overlayBlurDismissSuppressions = new Set<symbol>();
 // While the ring owns the screen (and foreground focus), suspend background
 // foreground polling so it cannot sample one of our own windows. Idempotent so
 // unbalanced show/hide calls cannot leave polling permanently suspended.
 let overlaySuspendsPolling = false;
+
+const OVERLAY_RENDERER_RECOVERY_WINDOW_MS = 30_000;
+const MAX_OVERLAY_RENDERER_RECOVERIES = 3;
 
 export interface RingWindowDiagnosticState {
   overlay: {
@@ -50,6 +55,32 @@ function clearOverlayHideSafetyTimer(): void {
   overlayHideSafetyTimer = null;
 }
 
+function clearOverlayRendererRecoveryTimer(): void {
+  if (!overlayRendererRecoveryTimer) return;
+  clearTimeout(overlayRendererRecoveryTimer);
+  overlayRendererRecoveryTimer = null;
+}
+
+function scheduleOverlayRendererRecovery(window: BrowserWindow): void {
+  const now = Date.now();
+  overlayRendererRecoveryTimestamps = overlayRendererRecoveryTimestamps.filter(
+    (timestamp) => now - timestamp < OVERLAY_RENDERER_RECOVERY_WINDOW_MS
+  );
+  if (overlayRendererRecoveryTimestamps.length >= MAX_OVERLAY_RENDERER_RECOVERIES) {
+    console.error('[windows] Overlay renderer recovery stopped after repeated crashes.');
+    return;
+  }
+
+  overlayRendererRecoveryTimestamps.push(now);
+  clearOverlayRendererRecoveryTimer();
+  const delayMs = overlayRendererRecoveryTimestamps.length * 100;
+  overlayRendererRecoveryTimer = setTimeout(() => {
+    overlayRendererRecoveryTimer = null;
+    if (overlayWindow !== window || window.isDestroyed()) return;
+    window.webContents.reload();
+  }, delayMs);
+}
+
 // ---------------------------------------------------------------------------
 // Label-safe transparent overlay window, always on top
 // ---------------------------------------------------------------------------
@@ -69,7 +100,7 @@ export function createOverlayWindow(): BrowserWindow {
       preload: join(__dirname, 'preload-overlay.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
@@ -96,6 +127,8 @@ export function createOverlayWindow(): BrowserWindow {
     if (overlayWindow === createdOverlayWindow) {
       overlayWindowHandle = null;
       clearOverlayHideSafetyTimer();
+      clearOverlayRendererRecoveryTimer();
+      overlayRendererRecoveryTimestamps = [];
       pendingOverlayCloseId = null;
       overlayBlurDismissSuppressions.clear();
       setOverlayPollingSuspended(false);
@@ -118,11 +151,16 @@ export function createOverlayWindow(): BrowserWindow {
   });
   createdOverlayWindow.webContents.on('render-process-gone', () => {
     if (overlayWindow !== createdOverlayWindow) return;
+    endActiveRingSession();
     createdOverlayWindow.hide();
+    if (!createdOverlayWindow.isDestroyed()) {
+      createdOverlayWindow.setFocusable(true);
+    }
     clearOverlayHideSafetyTimer();
     pendingOverlayCloseId = null;
     overlayBlurDismissSuppressions.clear();
     setOverlayPollingSuspended(false);
+    scheduleOverlayRendererRecovery(createdOverlayWindow);
   });
 
   return overlayWindow;
@@ -242,7 +280,7 @@ export function createDashboardWindow(): BrowserWindow {
       preload: join(__dirname, 'preload-dashboard.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 

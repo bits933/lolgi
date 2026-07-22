@@ -35,6 +35,7 @@ function createMockWindow(options: Record<string, unknown>): any {
     focused: false,
     webContents: {
       send: vi.fn(),
+      reload: vi.fn(),
       on: vi.fn((event: string, handler: (...args: any[]) => void) => {
         const handlers = contentHandlers.get(event) ?? [];
         handlers.push(handler);
@@ -107,6 +108,7 @@ describe('overlay outside-click behavior', () => {
     const overlay = electronHarness.windows[0];
     expect(overlay.options.webPreferences.preload).toContain('preload-overlay');
     expect(overlay.options.focusable).toBe(true);
+    expect(overlay.options.webPreferences.sandbox).toBe(true);
     expect(overlay.setBounds).toHaveBeenCalledWith({
       x: 120,
       y: 240,
@@ -257,5 +259,23 @@ describe('overlay outside-click behavior', () => {
     );
     expect(foregroundHarness.setForegroundPollingBusy).toHaveBeenLastCalledWith(false);
     expect(windows.getOverlayWindow()).toBeNull();
+  });
+
+  it('invalidates the active session and reloads after an overlay renderer crash', async () => {
+    const windows = await loadWindowsModule();
+    const overlay = windows.createOverlayWindow() as any;
+    windows.showOverlay(0, 0);
+
+    overlay.webContents.emit('render-process-gone');
+
+    expect(profileRuntimeHarness.endActiveRingSession).toHaveBeenCalledOnce();
+    expect(overlay.hide).toHaveBeenCalledOnce();
+    expect(overlay.setFocusable).toHaveBeenCalledWith(true);
+    expect(foregroundHarness.setForegroundPollingBusy).toHaveBeenLastCalledWith(false);
+    expect(overlay.webContents.reload).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(overlay.webContents.reload).toHaveBeenCalledOnce();
   });
 });

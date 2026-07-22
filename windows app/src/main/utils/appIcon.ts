@@ -21,6 +21,7 @@ import { runPowerShell } from './foregroundApp';
 // upscale to 64px for crispness at the 24-48px sizes the UI renders at.
 
 const ICON_TARGET_SIZE = 64;
+export const APP_ICON_CACHE_MAX_ENTRIES = 100;
 
 const SHELL_APPS_FOLDER = /^shell:appsfolder\\/i;
 
@@ -199,6 +200,25 @@ const iconCache = new Map<string, string>();
 /** De-duplicate concurrent extractions of the same path (mirrors foregroundApp.ts). */
 const inFlight = new Map<string, Promise<string | null>>();
 
+function getCachedIcon(key: string): string | undefined {
+  const value = iconCache.get(key);
+  if (!value) return undefined;
+  // Map insertion order is our LRU list; refresh hits to the newest position.
+  iconCache.delete(key);
+  iconCache.set(key, value);
+  return value;
+}
+
+function cacheIcon(key: string, value: string): void {
+  iconCache.delete(key);
+  iconCache.set(key, value);
+  while (iconCache.size > APP_ICON_CACHE_MAX_ENTRIES) {
+    const oldest = iconCache.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    iconCache.delete(oldest);
+  }
+}
+
 /**
  * Extract an application's icon as a PNG data URL.
  *
@@ -213,7 +233,7 @@ export async function extractAppIcon(filePath: string): Promise<string | null> {
   const key = filePath?.trim().toLowerCase();
   if (!key) return null;
 
-  const cached = iconCache.get(key);
+  const cached = getCachedIcon(key);
   if (cached) return cached;
 
   const existing = inFlight.get(key);
@@ -221,7 +241,7 @@ export async function extractAppIcon(filePath: string): Promise<string | null> {
 
   const promise = extractUncached(filePath)
     .then((result) => {
-      if (result) iconCache.set(key, result); // never cache failures — allow retry
+      if (result) cacheIcon(key, result); // never cache failures — allow retry
       return result;
     })
     .finally(() => {

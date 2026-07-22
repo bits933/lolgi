@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { AppConfig, ForegroundAppInfo, ForegroundWindowTarget, RingProfile } from '../shared/types';
-import { resolveProfile } from '../shared/profileUtils';
+import { normalizeProcessName, resolveProfile } from '../shared/profileUtils';
 
 interface ManualOverrideState {
   profileId: string;
@@ -55,7 +55,9 @@ export function endActiveRingSession(): void {
 export function setManualProfileOverride(profileId: string, foregroundApp: ForegroundAppInfo | null): void {
   manualOverride = {
     profileId,
-    foregroundProcessName: foregroundApp?.processName.toLowerCase() ?? null,
+    foregroundProcessName: foregroundApp
+      ? normalizeProcessName(foregroundApp.processName)
+      : null,
   };
 }
 
@@ -65,7 +67,9 @@ export function clearManualProfileOverride(): void {
 
 export function getManualProfileOverrideId(foregroundApp: ForegroundAppInfo | null): string | null {
   if (!manualOverride) return null;
-  const processName = foregroundApp?.processName.toLowerCase() ?? null;
+  const processName = foregroundApp
+    ? normalizeProcessName(foregroundApp.processName)
+    : null;
   if (manualOverride.foregroundProcessName !== processName) {
     manualOverride = null;
     return null;

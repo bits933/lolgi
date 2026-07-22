@@ -204,7 +204,7 @@ watcherDescribe('persistent foreground helper lifecycle', () => {
     const ready = startForegroundAppWatcher();
     children[0].emitForeground('Figma', 101, '4101');
     await ready;
-    children[0].emitForeground('logi-actions-ring', process.pid, '4999', {
+    children[0].emitForeground('lolgi-actions-ring', process.pid, '4999', {
       source: 'event',
       sourceSequence: 2,
     });
