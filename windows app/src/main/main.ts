@@ -16,6 +16,7 @@ import { formatRuntimeBuildIdentity, getRuntimeBuildIdentity } from './buildIden
 import { flushDiagnostics, initializeDiagnostics } from './actions/diagnostics';
 import { shutdownTargetedInputBroker } from './actions/keyboard';
 import { migrateLegacyUserData } from './legacyUserData';
+import { initAutoUpdater } from './autoUpdater';
 
 // The app can outlive the console that launched it. Ignore only the expected
 // broken-pipe error so diagnostic logging cannot crash the main process.
@@ -102,6 +103,7 @@ function startPrimaryInstance(): void {
 
       createTray();
       showDashboard();
+      initAutoUpdater(dashboardWindow);
 
       const config = startupConfig;
       if (config.ringEnabled) {

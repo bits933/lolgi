@@ -1,4 +1,15 @@
 // ---------------------------------------------------------------------------
+// Auto-update
+// ---------------------------------------------------------------------------
+
+/** Pushed to the dashboard when a newer release is found or finished downloading. */
+export interface UpdateStatus {
+  version: string;
+  /** true once the installer is downloaded and quitAndInstall can run. */
+  downloaded: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Action Types
 // ---------------------------------------------------------------------------
 

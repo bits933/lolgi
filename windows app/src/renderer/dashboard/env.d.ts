@@ -1,4 +1,4 @@
-import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../../shared/types';
+import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig, UpdateStatus } from '../../shared/types';
 import type { RuntimeBuildIdentity } from '../../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../../shared/diagnostics';
 
@@ -42,6 +42,8 @@ export interface DashboardElectronAPI {
   setDashboardDirty: (value: boolean) => void;
   approveDashboardClose: () => void;
   onDashboardCloseRequested: (callback: () => void) => () => void;
+  onUpdateAvailable: (callback: (status: UpdateStatus) => void) => () => void;
+  installUpdate: () => void;
   pickFile: () => Promise<string | null>;
   pickFolder: () => Promise<string | null>;
 

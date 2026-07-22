@@ -14,6 +14,14 @@ export const RING_CLOSE = 'ring:close' as const;
 /** Config was updated while ring is open; payload: BubbleConfig[] */
 export const CONFIG_UPDATED = 'config:updated' as const;
 
+// --- Auto-update (Main → Dashboard) ---
+
+/** A newer release is available/downloaded; payload: UpdateStatus */
+export const UPDATE_AVAILABLE = 'update:available' as const;
+
+/** Dashboard → Main: quit and install the downloaded update now. */
+export const UPDATE_INSTALL = 'update:install' as const;
+
 /** Fresh system state became available after the ring opened. */
 export const SYSTEM_STATE_UPDATED = 'system:state-update' as const;
 

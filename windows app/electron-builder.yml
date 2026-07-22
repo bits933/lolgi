@@ -7,6 +7,14 @@ directories:
   output: ../release
   buildResources: resources
 
+# Auto-update source. `npm run dist` also emits latest.yml here; publish both the
+# NSIS installer and latest.yml to the matching GitHub Release so installed apps
+# detect new versions. Public repo, so no token needed to check for updates.
+publish:
+  provider: github
+  owner: bits933
+  repo: lolgi
+
 # Keep staging (`dist`) and root-level packaged output (`../release`) separate. The explicit
 # allowlist prevents stale installers, win-unpacked trees, or builder metadata
 # from ever being copied into app.asar.
@@ -34,6 +42,8 @@ extraResources:
     to: resources/
     filter:
       - app-icon.png
+  - from: src/renderer/assets/fonts/OFL.txt
+    to: licenses/Hanken-Grotesk-OFL.txt
 
 win:
   target:

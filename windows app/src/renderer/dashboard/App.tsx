@@ -28,6 +28,7 @@ import { GeneralSettings } from './components/General/GeneralSettings';
 import { NewProfileModal } from './components/ProfileCreator/NewProfileModal';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog/UnsavedChangesDialog';
 import { ToastRegion, type DashboardToast } from './components/Feedback/ToastRegion';
+import { UpdatePill } from './components/UpdatePill/UpdatePill';
 import { useDashboardStore } from './store/dashboardStore';
 import { INITIAL_PROFILE_DRAFT, profileDraftReducer } from './store/profileDraftReducer';
 import { useConfig } from './hooks/useConfig';
@@ -673,6 +674,7 @@ export function App(): React.ReactElement {
                 {draft.dirty && <span className={styles.unsaved}>Draft not saved</span>}
               </div>
               <div className={styles.headerActions}>
+                <UpdatePill />
                 <button type="button" onClick={() => dispatchDraft({ type: 'undo' })} disabled={draft.past.length === 0} title="Undo (Ctrl+Z)"><Undo2 size={15} /></button>
                 <button type="button" onClick={() => dispatchDraft({ type: 'redo' })} disabled={draft.future.length === 0} title="Redo (Ctrl+Y)"><Redo2 size={15} /></button>
                 <button type="button" onClick={() => duplicateProfileById(workingProfile.id)} title="Duplicate profile"><CopyPlus size={15} /></button>

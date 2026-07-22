@@ -1,6 +1,6 @@
 {
   "name": "lolgi-actions-ring",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Lolgi Action Ring — Electron Desktop App",
   "main": "dist/main-bundled.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "build:artifacts": "node -e \"require('fs').rmSync('dist/preload-outside-click.js',{force:true})\" && npm run build:overlay && npm run build:dashboard && npm run build:main",
     "build:overlay": "vite build --config vite.config.overlay.ts",
     "build:dashboard": "vite build --config vite.config.dashboard.ts",
-    "build:main": "esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main-bundled.js --external:electron --external:electron-store --external:loudness --format=cjs --target=node18 && esbuild src/preload/overlay.ts --bundle --platform=node --outfile=dist/preload-overlay.js --external:electron --format=cjs --target=node18 && esbuild src/preload/dashboard.ts --bundle --platform=node --outfile=dist/preload-dashboard.js --external:electron --format=cjs --target=node18",
+    "build:main": "esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main-bundled.js --external:electron --external:electron-store --external:electron-updater --external:loudness --format=cjs --target=node18 && esbuild src/preload/overlay.ts --bundle --platform=node --outfile=dist/preload-overlay.js --external:electron --format=cjs --target=node18 && esbuild src/preload/dashboard.ts --bundle --platform=node --outfile=dist/preload-dashboard.js --external:electron --format=cjs --target=node18",
     "electron": "electron .",
     "start": "npm run build && npm run electron",
     "bubble": "npm run build && node -e \"delete process.env.ELECTRON_RUN_AS_NODE; delete process.env.VSCODE_ESM_ENTRYPOINT; require('child_process').spawnSync('npm run electron',{stdio:'inherit',shell:true,env:process.env})\"",
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
     "loudness": "0.4.2",
     "lucide-react": "0.446.0",
     "react": "18.3.1",

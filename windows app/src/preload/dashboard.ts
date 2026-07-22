@@ -21,6 +21,8 @@ import {
   DASHBOARD_SET_DIRTY,
   DASHBOARD_CLOSE_REQUESTED,
   DASHBOARD_CLOSE_APPROVE,
+  UPDATE_AVAILABLE,
+  UPDATE_INSTALL,
   APP_DETECT_FOREGROUND,
   APP_LIST_RUNNING,
   APP_LIST_INSTALLED,
@@ -31,7 +33,7 @@ import {
   DIAGNOSTICS_GET_RECENT,
   DIAGNOSTICS_COPY_LAST,
 } from '../shared/ipcChannels';
-import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig } from '../shared/types';
+import type { AppConfig, ForegroundAppInfo, GraphicsAccelerationStatus, LabelSize, LaunchableAppInfo, MutationResult, RingProfile, RingSize, ThemeConfig, UpdateStatus } from '../shared/types';
 import type { RuntimeBuildIdentity } from '../shared/buildInfo';
 import type { DiagnosticCopyResult, DiagnosticEvent } from '../shared/diagnostics';
 import type { InstalledAppInfo } from '../main/utils/foregroundApp';
@@ -130,6 +132,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(DASHBOARD_CLOSE_REQUESTED, listener);
     return () => ipcRenderer.removeListener(DASHBOARD_CLOSE_REQUESTED, listener);
   },
+
+  // --- Auto-update ---
+
+  onUpdateAvailable: (callback: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_event: unknown, status: UpdateStatus) => callback(status);
+    ipcRenderer.on(UPDATE_AVAILABLE, listener);
+    return () => ipcRenderer.removeListener(UPDATE_AVAILABLE, listener);
+  },
+
+  installUpdate: (): void => ipcRenderer.send(UPDATE_INSTALL),
 
   // --- App Detection ---
 
