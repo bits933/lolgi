@@ -11,6 +11,7 @@ import {
   CONFIG_SET_TRIGGER_MODE,
   GRAPHICS_STATUS_GET,
   APP_RELAUNCH,
+  PRIVACY_POLICY_OPEN,
   DIALOG_PICK_FILE,
   DIALOG_PICK_FOLDER,
   PROFILE_V2_SAVE,
@@ -87,6 +88,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(GRAPHICS_STATUS_GET),
 
   relaunchApp: (): Promise<void> => ipcRenderer.invoke(APP_RELAUNCH),
+
+  /** Open the official privacy policy in the user's default browser. */
+  openPrivacyPolicy: (): Promise<void> => ipcRenderer.invoke(PRIVACY_POLICY_OPEN),
 
   setRingEnabled: (value: boolean): Promise<{ success: boolean }> =>
     ipcRenderer.invoke(CONFIG_SET_RING_ENABLED, value),

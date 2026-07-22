@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ACTION_EXECUTE,
   APP_RELAUNCH,
+  PRIVACY_POLICY_OPEN,
   CONFIG_SET_HARDWARE_ACCELERATION,
   GRAPHICS_STATUS_GET,
   OVERLAY_ANIMATION_COMPLETE,
@@ -21,6 +22,7 @@ const electronHarness = vi.hoisted(() => ({
   getFocusedWindow: vi.fn(),
   relaunch: vi.fn(),
   exit: vi.fn(),
+  openExternal: vi.fn(),
 }));
 
 const actionHarness = vi.hoisted(() => ({
@@ -87,6 +89,7 @@ vi.mock('electron', () => {
     dialog: {
       showOpenDialog: vi.fn(),
     },
+    shell: { openExternal: electronHarness.openExternal },
     BrowserWindow,
   };
 });
@@ -475,6 +478,17 @@ describe('ring session IPC action chain', () => {
     expect(relaunchHandler(dashboardEvent())).toBeUndefined();
     expect(electronHarness.relaunch).toHaveBeenCalledOnce();
     expect(electronHarness.exit).toHaveBeenCalledWith(0);
+  });
+
+  it('opens the fixed privacy-policy URL through the system browser', async () => {
+    const handler = electronHarness.handlers.get(PRIVACY_POLICY_OPEN);
+    if (!handler) throw new Error('Privacy policy handler was not registered');
+
+    await handler(dashboardEvent());
+
+    expect(electronHarness.openExternal).toHaveBeenCalledWith(
+      'https://github.com/bits933/lolgi/blob/main/PRIVACY.txt'
+    );
   });
 
 });

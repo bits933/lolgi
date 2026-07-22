@@ -1,4 +1,4 @@
-import { app, ipcMain, dialog, BrowserWindow } from 'electron';
+import { app, ipcMain, dialog, BrowserWindow, shell } from 'electron';
 import {
   ACTION_EXECUTE,
   ACTION_GET_DIAGNOSTICS,
@@ -19,6 +19,7 @@ import {
   CONFIG_SET_TRIGGER_MODE,
   GRAPHICS_STATUS_GET,
   APP_RELAUNCH,
+  PRIVACY_POLICY_OPEN,
   DIALOG_PICK_FILE,
   DIALOG_PICK_FOLDER,
   PROFILE_V2_SAVE,
@@ -114,6 +115,7 @@ const RING_SIZES = new Set<RingSize>(['small', 'medium', 'large']);
 const LABEL_SIZES = new Set<LabelSize>(['small', 'medium', 'large']);
 const THEME_MODES = new Set<ThemeConfig['mode']>(['system', 'light', 'dark', 'custom']);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const PRIVACY_POLICY_URL = 'https://github.com/bits933/lolgi/blob/main/PRIVACY.txt';
 
 function expectedWindow(source: IpcSource): BrowserWindow | null {
   return source === 'overlay' ? getOverlayWindow() : getDashboardWindow();
@@ -447,6 +449,10 @@ export function registerIpcHandlers(): void {
   handleFrom(APP_RELAUNCH, 'dashboard', () => {
     app.relaunch();
     app.exit(0);
+  });
+
+  handleFrom(PRIVACY_POLICY_OPEN, 'dashboard', async () => {
+    await shell.openExternal(PRIVACY_POLICY_URL);
   });
 
   handleFrom(CONFIG_SET_RING_ENABLED, 'dashboard', (_event, value: unknown) => {

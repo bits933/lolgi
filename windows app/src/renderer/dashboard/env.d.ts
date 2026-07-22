@@ -34,6 +34,7 @@ export interface DashboardElectronAPI {
   setHardwareAcceleration: (value: boolean) => Promise<GraphicsAccelerationStatus>;
   getGraphicsAccelerationStatus: () => Promise<GraphicsAccelerationStatus>;
   relaunchApp: () => Promise<void>;
+  openPrivacyPolicy: () => Promise<void>;
   saveProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   addProfile: (profile: RingProfile) => Promise<MutationResult<RingProfile>>;
   removeProfile: (id: string) => Promise<MutationResult>;

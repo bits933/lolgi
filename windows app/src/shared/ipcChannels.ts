@@ -74,6 +74,9 @@ export const GRAPHICS_STATUS_GET = 'graphics:get-status' as const;
 /** Relaunch the application so startup-only settings can take effect. */
 export const APP_RELAUNCH = 'app:relaunch' as const;
 
+/** Open the official privacy policy in the user's default browser. */
+export const PRIVACY_POLICY_OPEN = 'privacy-policy:open' as const;
+
 /** Enable or disable the global ring trigger. */
 export const CONFIG_SET_RING_ENABLED = 'config:set-ring-enabled' as const;
 

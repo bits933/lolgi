@@ -64,6 +64,8 @@
 .diagnosticButton:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: var(--accent-muted); }
 .diagnosticButton:disabled { opacity: 0.55; cursor: wait; }
 .diagnosticStatus { color: var(--accent); font-size: var(--fs-xs); }
+.privacyLink { width: fit-content; padding: 0; display: inline-flex; align-items: center; gap: 5px; border: 0; color: var(--accent); background: transparent; font-size: var(--fs-xs); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.privacyLink:hover { color: var(--text-primary); }
 
 @media (max-width: 1080px) {
   .settingsGrid { grid-template-columns: 1fr; }

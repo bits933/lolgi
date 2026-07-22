@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CircleDot, Copy, Info, Keyboard, Power, RotateCcw, Sparkles } from 'lucide-react';
+import { CircleDot, Copy, ExternalLink, Info, Keyboard, Power, RotateCcw, Sparkles } from 'lucide-react';
 import { flushPendingThemePersistence, useDashboardStore } from '../../store/dashboardStore';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_BUBBLE_COLOR } from '../../../../shared/constants';
 import { createEmptySlots } from '../../../../shared/profileUtils';
@@ -281,6 +281,9 @@ export function GeneralSettings(): React.ReactElement {
               <small>
                 Configuration schema {config.schemaVersion}. Diagnostic snapshots stay on this device and omit window/document titles.
               </small>
+              <button type="button" className={styles.privacyLink} onClick={() => void window.electronAPI.openPrivacyPolicy()}>
+                <ExternalLink size={13} /> Privacy policy
+              </button>
               {diagnosticStatus && <span className={styles.diagnosticStatus} aria-live="polite">{diagnosticStatus}</span>}
             </div>
           </section>

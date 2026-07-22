@@ -1,13 +1,10 @@
 PRIVACY POLICY FOR LOLGI ACTION RING
 
-Last updated: July 20, 2026
-
-Before publishing this policy, replace [Publisher legal name] and
-[privacy contact email] below with the correct information.
+Last updated: July 23, 2026
 
 Lolgi Action Ring is a Windows desktop application that lets you configure
 and trigger shortcut, application, file, folder, URL, and system actions.
-This policy explains how [Publisher legal name] ("we", "us", or "our")
+This policy explains how BITAN PAUL ("we", "us", or "our")
 handles information when you use the application.
 
 SUMMARY
@@ -113,8 +110,11 @@ policy will show a new "Last updated" date.
 
 CONTACT
 
-For privacy questions or requests, contact [Publisher legal name] at
-[privacy contact email].
+For privacy questions or requests, contact BITAN PAUL at
+bitanpaul933@gmail.com.
+
+Mailing address: bitanpaul933@gmail.com
+Support URL: mailto:bitanpaul933@gmail.com
 
 Depending on where you live, you may have privacy rights under applicable law.
 Use the contact details above to make a request or raise a concern.
