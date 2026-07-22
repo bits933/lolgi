@@ -22,8 +22,16 @@ import { resolveMainRingHover } from './hoverGeometry';
 
 const POINTER_GEOMETRY_EPSILON_PX = 0.01;
 
+// Mode B ("hold and release") release-point hit test: mirrors the pointer-events/
+// opacity interactivity check handleOutsideMouseDown uses below.
+function isInteractiveBubbleElement(element: Element): boolean {
+  const style = window.getComputedStyle(element);
+  return style.pointerEvents !== 'none' && Number(style.opacity) >= 0.1;
+}
+
 export function ActionsRing(): React.ReactElement | null {
   const isOpen = useOverlayStore((s) => s.isOpen);
+  const triggerMode = useOverlayStore((s) => s.triggerMode);
   const hoveredIndex = useOverlayStore((s) => s.hoveredIndex);
   const bubbles = useOverlayStore((s) => s.bubbles);
   const ringSize = useOverlayStore((s) => s.ringSize);
@@ -38,6 +46,7 @@ export function ActionsRing(): React.ReactElement | null {
   const positions = useRingGeometry(bubbles.length);
   const ringRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const pressBubbleElRef = useRef<HTMLElement | null>(null);
   const actionInFlightRef = useRef(false);
   const activeActionExecutionRef = useRef<ActionExecutionController | null>(null);
 
@@ -173,7 +182,9 @@ export function ActionsRing(): React.ReactElement | null {
   }, [isVisible, isClosing, subRingParent, positions, setHoveredIndex]);
 
   useEffect(() => {
-    if (!isOpen || isClosing) return;
+    // Mode B handles its own press/release dismissal below — a mousedown-based
+    // dismiss here would close the ring the instant the user presses down.
+    if (!isOpen || isClosing || triggerMode === 'B') return;
 
     function handleOutsideMouseDown(e: MouseEvent): void {
       if (e.button !== 0) return;
@@ -207,7 +218,57 @@ export function ActionsRing(): React.ReactElement | null {
 
     document.addEventListener('mousedown', handleOutsideMouseDown, true);
     return () => document.removeEventListener('mousedown', handleOutsideMouseDown, true);
-  }, [isOpen, isClosing, closeRing, ringSize]);
+  }, [isOpen, isClosing, triggerMode, closeRing, ringSize]);
+
+  // ---------------------------------------------------------------------------
+  // Mode B ("hold and release"): the user may press down on empty space, the
+  // center button's surroundings, or a bubble, then drag and release over a
+  // (possibly different) bubble to select it. Release outside any bubble/control
+  // dismisses the ring, mirroring handleOutsideMouseDown's dismiss above.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isOpen || isClosing || triggerMode !== 'B') return;
+
+    // Reset at attach time so a stray mouseup can't reference a stale bubble
+    // from a previous ring session.
+    pressBubbleElRef.current = null;
+
+    function handlePressTrack(e: MouseEvent): void {
+      if (e.button !== 0) return;
+      const target = e.target instanceof Element ? e.target : null;
+      pressBubbleElRef.current = (target?.closest('[data-bubble="true"]') as HTMLElement | null) ?? null;
+    }
+
+    function handleReleaseSelect(e: MouseEvent): void {
+      if (e.button !== 0) return;
+
+      const atPoint = document.elementFromPoint(e.clientX, e.clientY);
+      const releaseBubbleEl = atPoint?.closest('[data-bubble="true"]') as HTMLElement | null;
+
+      if (releaseBubbleEl && isInteractiveBubbleElement(releaseBubbleEl)) {
+        // Same-element press+release already fires a native click — synthesizing
+        // one here would double-fire the action.
+        if (releaseBubbleEl !== pressBubbleElRef.current) releaseBubbleEl.click();
+        return;
+      }
+
+      if (atPoint?.closest('[data-ring-control="true"]')) return;
+
+      setSubRingParent(null);
+      setSubRingParentPos(null);
+      setIsSubRingVisible(false);
+      setIsSubRingClosing(false);
+      closeRing();
+      window.electronAPI.closeOverlay();
+    }
+
+    document.addEventListener('mousedown', handlePressTrack, true);
+    document.addEventListener('mouseup', handleReleaseSelect, true);
+    return () => {
+      document.removeEventListener('mousedown', handlePressTrack, true);
+      document.removeEventListener('mouseup', handleReleaseSelect, true);
+    };
+  }, [isOpen, isClosing, triggerMode, closeRing]);
 
   // ---------------------------------------------------------------------------
   // Right-click dismisses the ring. Keyboard navigation is registered below

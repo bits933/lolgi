@@ -140,7 +140,11 @@ export const Bubble = forwardRef<HTMLDivElement, BubbleProps>(
       unbounded: config.parameters?.unbounded === true,
       step: config.parameters?.step,
     });
-    const Icon = resolveIcon(isToggleActive && config.iconNameAlt ? config.iconNameAlt : config.iconName);
+    const Icon = resolveIcon(
+      isToggleActive
+        ? config.iconNameAlt ?? (config.actionType === 'media-play-pause' ? 'CirclePause' : config.iconName)
+        : config.iconName,
+    );
     const tx = position.x - 200;
     const ty = position.y - 200;
     const delay = isClosing ? (total - 1 - index) * 14 : index * 16;
